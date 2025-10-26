@@ -1,14 +1,33 @@
 /**
  * HTTP Client integration for MovieDb API
  *
- * Provides base request builder with retry logic and error mapping.
+ * Provides base request builder with retry logic, error mapping, and observability.
+ * Includes structured logging, distributed tracing, and metrics collection.
  */
 
 import { HttpClient, HttpClientRequest } from "@effect/platform";
-import { Effect, Schedule } from "effect";
+import { Effect, Metric, MetricBoundaries, Schedule } from "effect";
 import { MovieDbConfig } from "./config.ts";
 import { fromHttpStatus, toNetworkError } from "./errors.ts";
 import type { MovieDbErrors } from "./errors.ts";
+
+/**
+ * Metrics for monitoring API usage
+ */
+export const apiRequestCounter = Metric.counter("moviedb_api_requests_total", {
+  incremental: true,
+});
+
+// Histogram with boundaries for request duration in milliseconds
+// Buckets: 0-50ms, 50-100ms, 100-150ms, ... up to 1000ms
+export const apiRequestDuration = Metric.histogram(
+  "moviedb_api_request_duration_ms",
+  MetricBoundaries.linear({ start: 0, width: 50, count: 20 }),
+);
+
+export const apiErrorCounter = Metric.counter("moviedb_api_errors_total", {
+  incremental: true,
+});
 
 /**
  * Create an HTTP client configured for TMDb API
@@ -100,7 +119,12 @@ export const withRetry = <A, E extends MovieDbErrors, R>(
   });
 
 /**
- * Helper to execute a GET request and parse JSON response
+ * Helper to execute a GET request and parse JSON response with full observability
+ *
+ * Features:
+ * - Structured logging of request/response
+ * - Distributed tracing with timing
+ * - Metrics collection for monitoring
  *
  * @example
  * ```ts
@@ -114,21 +138,77 @@ export const executeJson = <A>(
   client: HttpClient.HttpClient,
   path: string,
 ): Effect.Effect<A, MovieDbErrors, never> =>
-  client.get(path).pipe(
-    Effect.flatMap((response) => response.json),
-    Effect.scoped,
-    // Map HttpClientError to MovieDbErrors
-    Effect.catchTags({
-      ResponseError: (error) =>
-        Effect.fail(
-          fromHttpStatus(
-            error.response.status,
-            error.message,
+  Effect.gen(function* () {
+    const startTime = Date.now();
+
+    // Log request start
+    yield* Effect.logDebug("TMDb API request started").pipe(
+      Effect.annotateLogs({
+        path,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
+    // Execute request with error handling
+    const result = yield* client.get(path).pipe(
+      Effect.flatMap((response) => response.json),
+      Effect.scoped,
+      // Map HttpClientError to MovieDbErrors
+      Effect.catchTags({
+        ResponseError: (error) =>
+          Effect.fail(
+            fromHttpStatus(
+              error.response.status,
+              error.message,
+            ),
           ),
-        ),
-      RequestError: (error) =>
-        Effect.fail(toNetworkError(error.cause ?? error, error.request.url)),
+        RequestError: (error) =>
+          Effect.fail(
+            toNetworkError(error.cause ?? error, error.request.url),
+          ),
+      }),
+      // Apply retry logic after error mapping
+      withRetry,
+      // Track success with metrics
+      Effect.tap(() => {
+        const duration = Date.now() - startTime;
+        return Effect.all([
+          Effect.logInfo("TMDb API request completed").pipe(
+            Effect.annotateLogs({
+              path,
+              duration_ms: duration,
+              timestamp: new Date().toISOString(),
+            }),
+          ),
+          Metric.increment(apiRequestCounter),
+          Metric.update(apiRequestDuration, duration),
+        ], { concurrency: "unbounded" });
+      }),
+      // Track errors with metrics
+      Effect.tapError((error) => {
+        const duration = Date.now() - startTime;
+        const errorType = "_tag" in error ? error._tag : "Unknown";
+
+        return Effect.all([
+          Effect.logError("TMDb API request failed").pipe(
+            Effect.annotateLogs({
+              path,
+              duration_ms: duration,
+              error: error instanceof Error ? error.message : String(error),
+              error_type: errorType,
+              timestamp: new Date().toISOString(),
+            }),
+          ),
+          Metric.increment(apiErrorCounter),
+          Metric.update(apiRequestDuration, duration),
+        ], { concurrency: "unbounded" });
+      }),
+    );
+
+    return result as A;
+  }).pipe(
+    // Wrap in tracing span
+    Effect.withSpan("moviedb.api.request", {
+      attributes: { "http.path": path, "http.method": "GET" },
     }),
-    // Apply retry logic after error mapping
-    withRetry,
   ) as Effect.Effect<A, MovieDbErrors, never>;
