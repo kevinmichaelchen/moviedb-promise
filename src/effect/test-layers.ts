@@ -26,7 +26,7 @@ export const makeTestConfig = (
 ): Layer.Layer<MovieDbConfig, never, never> => {
   const config: MovieDbConfigOptions = {
     apiKey: "test-api-key",
-    baseUrl: "https://api.themoviedb.org/3/",
+    baseUrl: "https://api.themoviedb.org/4/",
     requestsPerSecond: 50,
     burstCapacity: 10,
     bufferCapacity: 200,
@@ -57,19 +57,7 @@ export const MockRateLimiter: Layer.Layer<RateLimiter, never, never> = Layer
     RateLimiter,
     RateLimiter.of({
       // Execute immediately without rate limiting
-      execute: <A, E>(effect: Effect.Effect<A, E, never>) => effect,
-
-      // Return mock stats
-      stats: () =>
-        Effect.succeed({
-          queueSize: 0,
-          inFlight: 0,
-          completed: 0,
-          dropped: 0,
-        }),
-
-      // No-op shutdown
-      shutdown: () => Effect.void,
+      execute: <A, E, R>(effect: Effect.Effect<A, E, R>) => effect,
     }),
   );
 

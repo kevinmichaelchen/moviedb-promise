@@ -11,14 +11,14 @@ import { Context } from "effect";
  */
 export interface MovieDbConfigOptions {
   /**
-   * The Movie Database API key
-   * @see https://developers.themoviedb.org/3/getting-started/introduction
+   * The Movie Database API Bearer token (v4 API)
+   * @see https://developer.themoviedb.org/docs/authentication-application
    */
   readonly apiKey: string;
 
   /**
    * Base URL for the TMDb API
-   * @default "https://api.themoviedb.org/3/"
+   * @default "https://api.themoviedb.org/4/"
    */
   readonly baseUrl: string;
 
@@ -85,7 +85,7 @@ export class MovieDbConfig extends Context.Tag("MovieDbConfig")<
  * Default configuration values
  */
 export const defaultConfig: Omit<MovieDbConfigOptions, "apiKey"> = {
-  baseUrl: "https://api.themoviedb.org/3/",
+  baseUrl: "https://api.themoviedb.org/4/",
   requestsPerSecond: 50,
   burstCapacity: 10,
   bufferCapacity: 200,
