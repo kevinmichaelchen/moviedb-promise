@@ -18,7 +18,7 @@ export interface MovieDbConfigOptions {
 
   /**
    * Base URL for the TMDb API
-   * @default "https://api.themoviedb.org/4/"
+   * @default "https://api.themoviedb.org/3/"
    */
   readonly baseUrl: string;
 
@@ -85,7 +85,7 @@ export class MovieDbConfig extends Context.Tag("MovieDbConfig")<
  * Default configuration values
  */
 export const defaultConfig: Omit<MovieDbConfigOptions, "apiKey"> = {
-  baseUrl: "https://api.themoviedb.org/4/",
+  baseUrl: "https://api.themoviedb.org/3/",
   requestsPerSecond: 50,
   burstCapacity: 10,
   bufferCapacity: 200,

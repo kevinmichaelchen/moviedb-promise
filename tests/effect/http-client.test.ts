@@ -20,8 +20,8 @@ Deno.test({
     const program = Effect.gen(function* () {
       const client = yield* makeMovieDbHttpClient();
 
-      // Make a simple request to get a list (v4 API endpoint)
-      const response = yield* client.get("/list/1");
+      // Make a simple request to get movie details (v3 API endpoint)
+      const response = yield* client.get("/movie/550");
       const data = yield* response.json;
 
       // Verify we got a valid response with expected fields
@@ -48,8 +48,8 @@ Deno.test({
     const program = Effect.gen(function* () {
       const client = yield* makeMovieDbHttpClient();
 
-      // Try to fetch a non-existent list - should map 404 to NotFoundError
-      yield* executeJson(client, "/list/9999999999");
+      // Try to fetch a non-existent movie - should map 404 to NotFoundError
+      yield* executeJson(client, "/movie/9999999999");
     }).pipe(
       Effect.provide(NodeHttpClient.layerUndici),
       Effect.provide(makeTestConfig({ apiKey: REAL_API_KEY! })),
@@ -74,7 +74,7 @@ Deno.test({
       const client = yield* makeMovieDbHttpClient();
 
       // Use an invalid API key to trigger 401
-      yield* executeJson(client, "/list/1");
+      yield* executeJson(client, "/movie/550");
     }).pipe(
       Effect.provide(NodeHttpClient.layerUndici),
       Effect.provide(
@@ -103,7 +103,7 @@ Deno.test({
       const client = yield* makeMovieDbHttpClient();
 
       // Try to connect to an invalid URL (should cause network error)
-      yield* executeJson(client, "/list/1");
+      yield* executeJson(client, "/movie/550");
     }).pipe(
       Effect.provide(NodeHttpClient.layerUndici),
       Effect.provide(

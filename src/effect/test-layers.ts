@@ -26,7 +26,7 @@ export const makeTestConfig = (
 ): Layer.Layer<MovieDbConfig, never, never> => {
   const config: MovieDbConfigOptions = {
     apiKey: "test-api-key",
-    baseUrl: "https://api.themoviedb.org/4/",
+    baseUrl: "https://api.themoviedb.org/3/",
     requestsPerSecond: 50,
     burstCapacity: 10,
     bufferCapacity: 200,

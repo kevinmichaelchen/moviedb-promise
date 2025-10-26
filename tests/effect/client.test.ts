@@ -38,22 +38,22 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    interface ListResponse {
+    interface MovieResponse {
       id: number;
-      name: string;
-      item_count: number;
+      title: string;
+      overview: string;
     }
 
     const program = Effect.gen(function* () {
       const client = yield* MovieDbClient;
 
-      // Fetch a known public list
-      const list = yield* client.get<ListResponse>("/list/1");
+      // Fetch a known movie (Fight Club)
+      const movie = yield* client.get<MovieResponse>("/movie/550");
 
       // Verify we got valid data
-      assertEquals(typeof list.id, "number");
-      assertEquals(typeof list.name, "string");
-      assertEquals(list.id, 1);
+      assertEquals(typeof movie.id, "number");
+      assertEquals(typeof movie.title, "string");
+      assertEquals(movie.id, 550);
     }).pipe(
       Effect.provide(MovieDbClient.Default),
       Effect.provide(RateLimiterLive),
@@ -76,7 +76,7 @@ Deno.test({
       const client = yield* MovieDbClient;
 
       // Try to fetch a non-existent resource
-      yield* client.get("/list/9999999999");
+      yield* client.get("/movie/9999999999");
     }).pipe(
       Effect.provide(MovieDbClient.Default),
       Effect.provide(RateLimiterLive),
@@ -97,7 +97,7 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
-    interface ListResponse {
+    interface MovieResponse {
       id: number;
     }
 
@@ -107,12 +107,12 @@ Deno.test({
       // Make multiple requests - they should be rate-limited
       const results = [];
       for (let i = 0; i < 3; i++) {
-        const list = yield* client.get<ListResponse>("/list/1");
-        results.push(list.id);
+        const movie = yield* client.get<MovieResponse>("/movie/550");
+        results.push(movie.id);
       }
 
       // All requests should succeed
-      assertEquals(results, [1, 1, 1]);
+      assertEquals(results, [550, 550, 550]);
     }).pipe(
       Effect.provide(MovieDbClient.Default),
       Effect.provide(RateLimiterLive),
