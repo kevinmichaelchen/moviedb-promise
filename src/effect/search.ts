@@ -2,11 +2,26 @@
  * Search service for TMDb API
  *
  * Provides Effect-based methods for search endpoints.
+ * All responses are validated and transformed from snake_case to camelCase.
  */
 
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
+import * as SearchSchemas from "./schemas/search.ts";
+
+/**
+ * Re-export schema types for external use
+ */
+export type MovieSearchResult = typeof SearchSchemas.MovieSearchResult.Type;
+export type TvSearchResult = typeof SearchSchemas.TvSearchResult.Type;
+export type PersonSearchResult = typeof SearchSchemas.PersonSearchResult.Type;
+export type MultiSearchResult = SearchSchemas.MultiSearchResult;
+export type SearchMovieResponse = typeof SearchSchemas.SearchMovieResponse.Type;
+export type SearchTvResponse = typeof SearchSchemas.SearchTvResponse.Type;
+export type SearchPersonResponse =
+  typeof SearchSchemas.SearchPersonResponse.Type;
+export type SearchMultiResponse = typeof SearchSchemas.SearchMultiResponse.Type;
 
 /**
  * Common search request parameters
@@ -41,83 +56,10 @@ export interface SearchPersonRequest extends SearchRequest {}
 export interface SearchMultiRequest extends SearchRequest {}
 
 /**
- * Search result types
- */
-export interface MovieSearchResult {
-  readonly id: number;
-  readonly title: string;
-  readonly original_title: string;
-  readonly overview: string;
-  readonly poster_path: string | null;
-  readonly backdrop_path: string | null;
-  readonly release_date: string;
-  readonly vote_average: number;
-  readonly vote_count: number;
-  readonly popularity: number;
-  readonly media_type?: "movie";
-}
-
-export interface TvSearchResult {
-  readonly id: number;
-  readonly name: string;
-  readonly original_name: string;
-  readonly overview: string;
-  readonly poster_path: string | null;
-  readonly backdrop_path: string | null;
-  readonly first_air_date: string;
-  readonly vote_average: number;
-  readonly vote_count: number;
-  readonly popularity: number;
-  readonly media_type?: "tv";
-}
-
-export interface PersonSearchResult {
-  readonly id: number;
-  readonly name: string;
-  readonly profile_path: string | null;
-  readonly known_for_department: string;
-  readonly popularity: number;
-  readonly media_type?: "person";
-  readonly known_for?: ReadonlyArray<MovieSearchResult | TvSearchResult>;
-}
-
-export type MultiSearchResult =
-  | MovieSearchResult
-  | TvSearchResult
-  | PersonSearchResult;
-
-export interface SearchMovieResponse {
-  readonly page: number;
-  readonly results: ReadonlyArray<MovieSearchResult>;
-  readonly total_pages: number;
-  readonly total_results: number;
-}
-
-export interface SearchTvResponse {
-  readonly page: number;
-  readonly results: ReadonlyArray<TvSearchResult>;
-  readonly total_pages: number;
-  readonly total_results: number;
-}
-
-export interface SearchPersonResponse {
-  readonly page: number;
-  readonly results: ReadonlyArray<PersonSearchResult>;
-  readonly total_pages: number;
-  readonly total_results: number;
-}
-
-export interface SearchMultiResponse {
-  readonly page: number;
-  readonly results: ReadonlyArray<MultiSearchResult>;
-  readonly total_pages: number;
-  readonly total_results: number;
-}
-
-/**
  * Search service
  *
  * Provides methods for searching movies, TV shows, and people.
+ * All responses are validated using Effect Schema and transformed to camelCase.
  *
  * @example
  * ```ts
@@ -125,6 +67,7 @@ export interface SearchMultiResponse {
  *   const search = yield* Search
  *   const results = yield* search.searchMovie({ query: "fight club" })
  *   console.log(results.results[0].title)
+ *   console.log(results.results[0].releaseDate) // camelCase!
  * })
  * ```
  */
@@ -137,7 +80,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        * Search for movies
        *
        * @param request - Search query and optional filters
-       * @returns Paginated movie search results
+       * @returns Paginated movie search results with camelCase fields
        *
        * @example
        * ```ts
@@ -145,6 +88,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        *   query: "fight club",
        *   page: 1
        * })
+       * console.log(results.results[0].originalTitle) // camelCase!
        * ```
        */
       searchMovie: (
@@ -166,8 +110,8 @@ export class Search extends Effect.Service<Search>()("Search", {
           );
         }
 
-        return client.get<SearchMovieResponse>(
-          `/search/movie?${params.toString()}`,
+        return client.get(`/search/movie?${params.toString()}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchMovieResponse)),
         );
       },
 
@@ -175,7 +119,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        * Search for TV shows
        *
        * @param request - Search query and optional filters
-       * @returns Paginated TV show search results
+       * @returns Paginated TV show search results with camelCase fields
        *
        * @example
        * ```ts
@@ -183,6 +127,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        *   query: "breaking bad",
        *   page: 1
        * })
+       * console.log(results.results[0].firstAirDate) // camelCase!
        * ```
        */
       searchTv: (
@@ -202,8 +147,8 @@ export class Search extends Effect.Service<Search>()("Search", {
           );
         }
 
-        return client.get<SearchTvResponse>(
-          `/search/tv?${params.toString()}`,
+        return client.get(`/search/tv?${params.toString()}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchTvResponse)),
         );
       },
 
@@ -211,7 +156,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        * Search for people
        *
        * @param request - Search query and optional filters
-       * @returns Paginated person search results
+       * @returns Paginated person search results with camelCase fields
        *
        * @example
        * ```ts
@@ -219,6 +164,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        *   query: "brad pitt",
        *   page: 1
        * })
+       * console.log(results.results[0].profilePath) // camelCase!
        * ```
        */
       searchPerson: (
@@ -232,8 +178,8 @@ export class Search extends Effect.Service<Search>()("Search", {
           params.set("include_adult", String(request.include_adult));
         }
 
-        return client.get<SearchPersonResponse>(
-          `/search/person?${params.toString()}`,
+        return client.get(`/search/person?${params.toString()}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchPersonResponse)),
         );
       },
 
@@ -241,7 +187,7 @@ export class Search extends Effect.Service<Search>()("Search", {
        * Search across multiple media types (movies, TV shows, people)
        *
        * @param request - Search query and optional filters
-       * @returns Paginated multi-search results
+       * @returns Paginated multi-search results with camelCase fields
        *
        * @example
        * ```ts
@@ -262,8 +208,8 @@ export class Search extends Effect.Service<Search>()("Search", {
           params.set("include_adult", String(request.include_adult));
         }
 
-        return client.get<SearchMultiResponse>(
-          `/search/multi?${params.toString()}`,
+        return client.get(`/search/multi?${params.toString()}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchMultiResponse)),
         );
       },
     };

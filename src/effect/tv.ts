@@ -2,11 +2,27 @@
  * TV service for TMDb API
  *
  * Provides Effect-based methods for TV show-related endpoints.
+ * All responses are validated and transformed from snake_case to camelCase.
  */
 
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
+import * as TvSchemas from "./schemas/tv.ts";
+
+/**
+ * Re-export schema types for external use
+ */
+export type TvShowDetails = typeof TvSchemas.TvShowDetails.Type;
+export type TvCastMember = typeof TvSchemas.TvCastMember.Type;
+export type TvCrewMember = typeof TvSchemas.TvCrewMember.Type;
+export type TvCredits = typeof TvSchemas.TvCredits.Type;
+export type TvVideo = typeof TvSchemas.TvVideo.Type;
+export type TvVideos = typeof TvSchemas.TvVideos.Type;
+export type TvImage = typeof TvSchemas.TvImage.Type;
+export type TvImages = typeof TvSchemas.TvImages.Type;
+export type TvShowListResult = typeof TvSchemas.TvShowListResult.Type;
+export type TvShowListResponse = typeof TvSchemas.TvShowListResponse.Type;
 
 /**
  * Common request parameters
@@ -33,103 +49,10 @@ export interface TvListRequest {
 }
 
 /**
- * Response types
- */
-export interface TvShowDetails {
-  readonly id: number;
-  readonly name: string;
-  readonly original_name: string;
-  readonly overview: string;
-  readonly poster_path: string | null;
-  readonly backdrop_path: string | null;
-  readonly first_air_date: string;
-  readonly last_air_date: string;
-  readonly number_of_seasons: number;
-  readonly number_of_episodes: number;
-  readonly vote_average: number;
-  readonly vote_count: number;
-  readonly genres: ReadonlyArray<{ id: number; name: string }>;
-  readonly status: string;
-  readonly tagline: string | null;
-  readonly type: string;
-  readonly in_production: boolean;
-}
-
-export interface TvCastMember {
-  readonly id: number;
-  readonly name: string;
-  readonly character: string;
-  readonly profile_path: string | null;
-  readonly order: number;
-}
-
-export interface TvCrewMember {
-  readonly id: number;
-  readonly name: string;
-  readonly job: string;
-  readonly department: string;
-  readonly profile_path: string | null;
-}
-
-export interface TvCredits {
-  readonly id: number;
-  readonly cast: ReadonlyArray<TvCastMember>;
-  readonly crew: ReadonlyArray<TvCrewMember>;
-}
-
-export interface TvVideo {
-  readonly id: string;
-  readonly key: string;
-  readonly name: string;
-  readonly site: string;
-  readonly type: string;
-  readonly official: boolean;
-  readonly published_at: string;
-}
-
-export interface TvVideos {
-  readonly id: number;
-  readonly results: ReadonlyArray<TvVideo>;
-}
-
-export interface TvImage {
-  readonly file_path: string;
-  readonly width: number;
-  readonly height: number;
-  readonly vote_average: number;
-  readonly vote_count: number;
-}
-
-export interface TvImages {
-  readonly id: number;
-  readonly backdrops: ReadonlyArray<TvImage>;
-  readonly posters: ReadonlyArray<TvImage>;
-  readonly logos: ReadonlyArray<TvImage>;
-}
-
-export interface TvShowListResult {
-  readonly id: number;
-  readonly name: string;
-  readonly original_name: string;
-  readonly overview: string;
-  readonly poster_path: string | null;
-  readonly backdrop_path: string | null;
-  readonly first_air_date: string;
-  readonly vote_average: number;
-  readonly vote_count: number;
-}
-
-export interface TvShowListResponse {
-  readonly page: number;
-  readonly results: ReadonlyArray<TvShowListResult>;
-  readonly total_pages: number;
-  readonly total_results: number;
-}
-
-/**
  * TV service
  *
  * Provides methods for interacting with TMDb TV show endpoints.
+ * All responses are validated using Effect Schema and transformed to camelCase.
  *
  * @example
  * ```ts
@@ -137,6 +60,7 @@ export interface TvShowListResponse {
  *   const tv = yield* Tv
  *   const details = yield* tv.getDetails({ id: 1396 })
  *   console.log(details.name) // "Breaking Bad"
+ *   console.log(details.firstAirDate) // "2008-01-20" - note camelCase!
  * })
  * ```
  */
@@ -149,11 +73,12 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
        * Get TV show details
        *
        * @param request - TV show ID and optional language
-       * @returns TV show details
+       * @returns TV show details with camelCase fields
        *
        * @example
        * ```ts
        * const details = yield* tv.getDetails({ id: 1396 })
+       * console.log(details.originalName) // "Breaking Bad"
        * ```
        */
       getDetails: (
@@ -161,18 +86,21 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
       ): Effect.Effect<TvShowDetails, MovieDbErrors, never> => {
         const { id, language } = request;
         const params = language ? `?language=${language}` : "";
-        return client.get<TvShowDetails>(`/tv/${id}${params}`);
+        return client.get(`/tv/${id}${params}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowDetails)),
+        );
       },
 
       /**
        * Get TV show credits (cast and crew)
        *
        * @param request - TV show ID and optional language
-       * @returns TV show credits
+       * @returns TV show credits with camelCase fields
        *
        * @example
        * ```ts
        * const credits = yield* tv.getCredits({ id: 1396 })
+       * console.log(credits.cast[0].profilePath) // camelCase!
        * ```
        */
       getCredits: (
@@ -180,18 +108,21 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
       ): Effect.Effect<TvCredits, MovieDbErrors, never> => {
         const { id, language } = request;
         const params = language ? `?language=${language}` : "";
-        return client.get<TvCredits>(`/tv/${id}/credits${params}`);
+        return client.get(`/tv/${id}/credits${params}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvCredits)),
+        );
       },
 
       /**
        * Get TV show videos (trailers, teasers, clips)
        *
        * @param request - TV show ID and optional language
-       * @returns TV show videos
+       * @returns TV show videos with camelCase fields
        *
        * @example
        * ```ts
        * const videos = yield* tv.getVideos({ id: 1396 })
+       * console.log(videos.results[0].publishedAt) // camelCase!
        * ```
        */
       getVideos: (
@@ -199,14 +130,16 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
       ): Effect.Effect<TvVideos, MovieDbErrors, never> => {
         const { id, language } = request;
         const params = language ? `?language=${language}` : "";
-        return client.get<TvVideos>(`/tv/${id}/videos${params}`);
+        return client.get(`/tv/${id}/videos${params}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvVideos)),
+        );
       },
 
       /**
        * Get TV show images (posters, backdrops, logos)
        *
        * @param request - TV show ID and optional image language filter
-       * @returns TV show images
+       * @returns TV show images with camelCase fields
        *
        * @example
        * ```ts
@@ -214,6 +147,7 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
        *   id: 1396,
        *   include_image_language: "en,null"
        * })
+       * console.log(images.posters[0].filePath) // camelCase!
        * ```
        */
       getImages: (
@@ -226,8 +160,8 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
           params.set("include_image_language", include_image_language);
         }
         const query = params.toString();
-        return client.get<TvImages>(
-          `/tv/${id}/images${query ? `?${query}` : ""}`,
+        return client.get(`/tv/${id}/images${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvImages)),
         );
       },
 
@@ -235,11 +169,12 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
        * Get TV shows airing today
        *
        * @param request - Optional language, page, and timezone
-       * @returns Paginated list of TV shows airing today
+       * @returns Paginated list of TV shows airing today with camelCase fields
        *
        * @example
        * ```ts
        * const airingToday = yield* tv.getAiringToday({ page: 1 })
+       * console.log(airingToday.results[0].firstAirDate) // camelCase!
        * ```
        */
       getAiringToday: (
@@ -250,8 +185,8 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
         if (request?.page) params.set("page", String(request.page));
         if (request?.timezone) params.set("timezone", request.timezone);
         const query = params.toString();
-        return client.get<TvShowListResponse>(
-          `/tv/airing_today${query ? `?${query}` : ""}`,
+        return client.get(`/tv/airing_today${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
         );
       },
 
@@ -259,7 +194,7 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
        * Get TV shows currently on the air
        *
        * @param request - Optional language, page, and timezone
-       * @returns Paginated list of TV shows on the air
+       * @returns Paginated list of TV shows on the air with camelCase fields
        *
        * @example
        * ```ts
@@ -274,8 +209,8 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
         if (request?.page) params.set("page", String(request.page));
         if (request?.timezone) params.set("timezone", request.timezone);
         const query = params.toString();
-        return client.get<TvShowListResponse>(
-          `/tv/on_the_air${query ? `?${query}` : ""}`,
+        return client.get(`/tv/on_the_air${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
         );
       },
 
@@ -283,7 +218,7 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
        * Get popular TV shows
        *
        * @param request - Optional language and page
-       * @returns Paginated list of popular TV shows
+       * @returns Paginated list of popular TV shows with camelCase fields
        *
        * @example
        * ```ts
@@ -297,8 +232,8 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
         if (request?.language) params.set("language", request.language);
         if (request?.page) params.set("page", String(request.page));
         const query = params.toString();
-        return client.get<TvShowListResponse>(
-          `/tv/popular${query ? `?${query}` : ""}`,
+        return client.get(`/tv/popular${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
         );
       },
 
@@ -306,7 +241,7 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
        * Get top rated TV shows
        *
        * @param request - Optional language and page
-       * @returns Paginated list of top rated TV shows
+       * @returns Paginated list of top rated TV shows with camelCase fields
        *
        * @example
        * ```ts
@@ -320,8 +255,8 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
         if (request?.language) params.set("language", request.language);
         if (request?.page) params.set("page", String(request.page));
         const query = params.toString();
-        return client.get<TvShowListResponse>(
-          `/tv/top_rated${query ? `?${query}` : ""}`,
+        return client.get(`/tv/top_rated${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
         );
       },
     };

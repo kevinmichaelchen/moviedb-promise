@@ -31,14 +31,14 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof results.page, "number");
-      assertEquals(typeof results.total_pages, "number");
-      assertEquals(typeof results.total_results, "number");
+      assertEquals(typeof results.totalPages, "number");
+      assertEquals(typeof results.totalResults, "number");
       assertEquals(Array.isArray(results.results), true);
       assertEquals(results.results.length > 0, true);
 
       // Find Fight Club (1999) in results
       const fightClub = results.results.find((m) =>
-        m.title === "Fight Club" && m.release_date === "1999-10-15"
+        m.title === "Fight Club" && m.releaseDate === "1999-10-15"
       );
       assertEquals(
         fightClub !== undefined,
@@ -48,7 +48,7 @@ Deno.test({
 
       // Verify Fight Club details
       assertEquals(fightClub?.id, 550);
-      assertEquals(fightClub?.original_title, "Fight Club");
+      assertEquals(fightClub?.originalTitle, "Fight Club");
       assertEquals(
         fightClub?.overview.includes("insomniac") ||
           fightClub?.overview.includes("discontented"),
@@ -84,14 +84,14 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof results.page, "number");
-      assertEquals(typeof results.total_pages, "number");
-      assertEquals(typeof results.total_results, "number");
+      assertEquals(typeof results.totalPages, "number");
+      assertEquals(typeof results.totalResults, "number");
       assertEquals(Array.isArray(results.results), true);
       assertEquals(results.results.length > 0, true);
 
       // Find Breaking Bad in results
       const breakingBad = results.results.find((show) =>
-        show.name === "Breaking Bad" && show.first_air_date === "2008-01-20"
+        show.name === "Breaking Bad" && show.firstAirDate === "2008-01-20"
       );
       assertEquals(
         breakingBad !== undefined,
@@ -101,7 +101,7 @@ Deno.test({
 
       // Verify Breaking Bad details
       assertEquals(breakingBad?.id, 1396);
-      assertEquals(breakingBad?.original_name, "Breaking Bad");
+      assertEquals(breakingBad?.originalName, "Breaking Bad");
       assertEquals(
         breakingBad?.overview.includes("chemistry") ||
           breakingBad?.overview.includes("teacher"),
@@ -137,8 +137,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof results.page, "number");
-      assertEquals(typeof results.total_pages, "number");
-      assertEquals(typeof results.total_results, "number");
+      assertEquals(typeof results.totalPages, "number");
+      assertEquals(typeof results.totalResults, "number");
       assertEquals(Array.isArray(results.results), true);
       assertEquals(results.results.length > 0, true);
 
@@ -154,16 +154,16 @@ Deno.test({
 
       // Verify Brad Pitt details
       assertEquals(bradPitt?.id, 287);
-      assertEquals(bradPitt?.known_for_department, "Acting");
+      assertEquals(bradPitt?.knownForDepartment, "Acting");
       assertEquals(typeof bradPitt?.popularity, "number");
       if (bradPitt?.popularity !== undefined) {
         assertEquals(bradPitt.popularity > 0, true);
       }
 
-      // Verify known_for exists and has movies
-      if (bradPitt?.known_for) {
-        assertEquals(Array.isArray(bradPitt.known_for), true);
-        assertEquals(bradPitt.known_for.length > 0, true);
+      // Verify knownFor exists and has movies
+      if (bradPitt?.knownFor) {
+        assertEquals(Array.isArray(bradPitt.knownFor), true);
+        assertEquals(bradPitt.knownFor.length > 0, true);
       }
     }).pipe(
       Effect.provide(Search.Default),
@@ -194,13 +194,13 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof results.page, "number");
-      assertEquals(typeof results.total_pages, "number");
-      assertEquals(typeof results.total_results, "number");
+      assertEquals(typeof results.totalPages, "number");
+      assertEquals(typeof results.totalResults, "number");
       assertEquals(Array.isArray(results.results), true);
       assertEquals(results.results.length > 0, true);
 
       // Verify we have different media types
-      const mediaTypes = new Set(results.results.map((r) => r.media_type));
+      const mediaTypes = new Set(results.results.map((r) => r.mediaType));
 
       // Should have at least one type (could be movie, tv, or person)
       assertEquals(
@@ -213,11 +213,11 @@ Deno.test({
       const firstResult = results.results[0];
       assertEquals(typeof firstResult, "object");
 
-      if (firstResult.media_type === "movie") {
+      if (firstResult.mediaType === "movie") {
         assertEquals("title" in firstResult, true);
-      } else if (firstResult.media_type === "tv") {
+      } else if (firstResult.mediaType === "tv") {
         assertEquals("name" in firstResult, true);
-      } else if (firstResult.media_type === "person") {
+      } else if (firstResult.mediaType === "person") {
         assertEquals("name" in firstResult, true);
       }
     }).pipe(
@@ -253,7 +253,7 @@ Deno.test({
 
       // All results should be from 1999
       const fightClub1999 = results.results.find((m) =>
-        m.title === "Fight Club" && m.release_date.startsWith("1999")
+        m.title === "Fight Club" && m.releaseDate.startsWith("1999")
       );
       assertEquals(
         fightClub1999 !== undefined,
@@ -290,8 +290,8 @@ Deno.test({
 
       // Verify pagination structure exists
       assertEquals(typeof results.page, "number");
-      assertEquals(typeof results.total_pages, "number");
-      assertEquals(typeof results.total_results, "number");
+      assertEquals(typeof results.totalPages, "number");
+      assertEquals(typeof results.totalResults, "number");
       assertEquals(Array.isArray(results.results), true);
     }).pipe(
       Effect.provide(Search.Default),

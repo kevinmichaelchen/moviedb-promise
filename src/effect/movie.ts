@@ -2,11 +2,27 @@
  * Movie service for TMDb API
  *
  * Provides Effect-based methods for movie-related endpoints.
+ * All responses are validated and transformed from snake_case to camelCase.
  */
 
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
+import * as MovieSchemas from "./schemas/movie.ts";
+
+/**
+ * Re-export schema types for external use
+ */
+export type MovieDetails = typeof MovieSchemas.MovieDetails.Type;
+export type MovieCastMember = typeof MovieSchemas.MovieCastMember.Type;
+export type MovieCrewMember = typeof MovieSchemas.MovieCrewMember.Type;
+export type MovieCredits = typeof MovieSchemas.MovieCredits.Type;
+export type MovieVideo = typeof MovieSchemas.MovieVideo.Type;
+export type MovieVideos = typeof MovieSchemas.MovieVideos.Type;
+export type MovieImage = typeof MovieSchemas.MovieImage.Type;
+export type MovieImages = typeof MovieSchemas.MovieImages.Type;
+export type MovieListResult = typeof MovieSchemas.MovieListResult.Type;
+export type MovieListResponse = typeof MovieSchemas.MovieListResponse.Type;
 
 /**
  * Common request parameters
@@ -33,99 +49,10 @@ export interface MovieListRequest {
 }
 
 /**
- * Response types
- */
-export interface MovieDetails {
-  readonly id: number;
-  readonly title: string;
-  readonly original_title: string;
-  readonly overview: string;
-  readonly poster_path: string | null;
-  readonly backdrop_path: string | null;
-  readonly release_date: string;
-  readonly runtime: number | null;
-  readonly vote_average: number;
-  readonly vote_count: number;
-  readonly genres: ReadonlyArray<{ id: number; name: string }>;
-  readonly status: string;
-  readonly tagline: string | null;
-}
-
-export interface CastMember {
-  readonly id: number;
-  readonly name: string;
-  readonly character: string;
-  readonly profile_path: string | null;
-  readonly order: number;
-}
-
-export interface CrewMember {
-  readonly id: number;
-  readonly name: string;
-  readonly job: string;
-  readonly department: string;
-  readonly profile_path: string | null;
-}
-
-export interface MovieCredits {
-  readonly id: number;
-  readonly cast: ReadonlyArray<CastMember>;
-  readonly crew: ReadonlyArray<CrewMember>;
-}
-
-export interface Video {
-  readonly id: string;
-  readonly key: string;
-  readonly name: string;
-  readonly site: string;
-  readonly type: string;
-  readonly official: boolean;
-  readonly published_at: string;
-}
-
-export interface MovieVideos {
-  readonly id: number;
-  readonly results: ReadonlyArray<Video>;
-}
-
-export interface MovieImage {
-  readonly file_path: string;
-  readonly width: number;
-  readonly height: number;
-  readonly vote_average: number;
-  readonly vote_count: number;
-}
-
-export interface MovieImages {
-  readonly id: number;
-  readonly backdrops: ReadonlyArray<MovieImage>;
-  readonly posters: ReadonlyArray<MovieImage>;
-  readonly logos: ReadonlyArray<MovieImage>;
-}
-
-export interface MovieListResult {
-  readonly id: number;
-  readonly title: string;
-  readonly original_title: string;
-  readonly overview: string;
-  readonly poster_path: string | null;
-  readonly backdrop_path: string | null;
-  readonly release_date: string;
-  readonly vote_average: number;
-  readonly vote_count: number;
-}
-
-export interface MovieListResponse {
-  readonly page: number;
-  readonly results: ReadonlyArray<MovieListResult>;
-  readonly total_pages: number;
-  readonly total_results: number;
-}
-
-/**
  * Movie service
  *
  * Provides methods for interacting with TMDb movie endpoints.
+ * All responses are validated using Effect Schema and transformed to camelCase.
  *
  * @example
  * ```ts
@@ -133,6 +60,7 @@ export interface MovieListResponse {
  *   const movie = yield* Movie
  *   const details = yield* movie.getDetails({ id: 550 })
  *   console.log(details.title) // "Fight Club"
+ *   console.log(details.releaseDate) // "1999-10-15" - note camelCase!
  * })
  * ```
  */
@@ -145,11 +73,12 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
        * Get movie details
        *
        * @param request - Movie ID and optional language
-       * @returns Movie details
+       * @returns Movie details with camelCase fields
        *
        * @example
        * ```ts
        * const details = yield* movie.getDetails({ id: 550 })
+       * console.log(details.originalTitle) // "Fight Club"
        * ```
        */
       getDetails: (
@@ -157,18 +86,21 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
       ): Effect.Effect<MovieDetails, MovieDbErrors, never> => {
         const { id, language } = request;
         const params = language ? `?language=${language}` : "";
-        return client.get<MovieDetails>(`/movie/${id}${params}`);
+        return client.get(`/movie/${id}${params}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieDetails)),
+        );
       },
 
       /**
        * Get movie credits (cast and crew)
        *
        * @param request - Movie ID and optional language
-       * @returns Movie credits
+       * @returns Movie credits with camelCase fields
        *
        * @example
        * ```ts
        * const credits = yield* movie.getCredits({ id: 550 })
+       * console.log(credits.cast[0].profilePath) // camelCase!
        * ```
        */
       getCredits: (
@@ -176,18 +108,21 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
       ): Effect.Effect<MovieCredits, MovieDbErrors, never> => {
         const { id, language } = request;
         const params = language ? `?language=${language}` : "";
-        return client.get<MovieCredits>(`/movie/${id}/credits${params}`);
+        return client.get(`/movie/${id}/credits${params}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieCredits)),
+        );
       },
 
       /**
        * Get movie videos (trailers, teasers, clips)
        *
        * @param request - Movie ID and optional language
-       * @returns Movie videos
+       * @returns Movie videos with camelCase fields
        *
        * @example
        * ```ts
        * const videos = yield* movie.getVideos({ id: 550 })
+       * console.log(videos.results[0].publishedAt) // camelCase!
        * ```
        */
       getVideos: (
@@ -195,14 +130,16 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
       ): Effect.Effect<MovieVideos, MovieDbErrors, never> => {
         const { id, language } = request;
         const params = language ? `?language=${language}` : "";
-        return client.get<MovieVideos>(`/movie/${id}/videos${params}`);
+        return client.get(`/movie/${id}/videos${params}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieVideos)),
+        );
       },
 
       /**
        * Get movie images (posters, backdrops, logos)
        *
        * @param request - Movie ID and optional image language filter
-       * @returns Movie images
+       * @returns Movie images with camelCase fields
        *
        * @example
        * ```ts
@@ -210,6 +147,7 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
        *   id: 550,
        *   include_image_language: "en,null"
        * })
+       * console.log(images.posters[0].filePath) // camelCase!
        * ```
        */
       getImages: (
@@ -222,20 +160,21 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
           params.set("include_image_language", include_image_language);
         }
         const query = params.toString();
-        return client.get<MovieImages>(
-          `/movie/${id}/images${query ? `?${query}` : ""}`,
+        return client.get(`/movie/${id}/images${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieImages)),
         );
       },
 
       /**
-       * Get now playing movies
+       * Get movies now playing in theaters
        *
        * @param request - Optional language, page, and region
-       * @returns Paginated list of now playing movies
+       * @returns Paginated list of now playing movies with camelCase fields
        *
        * @example
        * ```ts
        * const nowPlaying = yield* movie.getNowPlaying({ page: 1 })
+       * console.log(nowPlaying.results[0].releaseDate) // camelCase!
        * ```
        */
       getNowPlaying: (
@@ -246,8 +185,8 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
         if (request?.page) params.set("page", String(request.page));
         if (request?.region) params.set("region", request.region);
         const query = params.toString();
-        return client.get<MovieListResponse>(
-          `/movie/now_playing${query ? `?${query}` : ""}`,
+        return client.get(`/movie/now_playing${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
         );
       },
 
@@ -255,7 +194,7 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
        * Get popular movies
        *
        * @param request - Optional language, page, and region
-       * @returns Paginated list of popular movies
+       * @returns Paginated list of popular movies with camelCase fields
        *
        * @example
        * ```ts
@@ -270,8 +209,8 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
         if (request?.page) params.set("page", String(request.page));
         if (request?.region) params.set("region", request.region);
         const query = params.toString();
-        return client.get<MovieListResponse>(
-          `/movie/popular${query ? `?${query}` : ""}`,
+        return client.get(`/movie/popular${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
         );
       },
 
@@ -279,7 +218,7 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
        * Get top rated movies
        *
        * @param request - Optional language, page, and region
-       * @returns Paginated list of top rated movies
+       * @returns Paginated list of top rated movies with camelCase fields
        *
        * @example
        * ```ts
@@ -294,8 +233,8 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
         if (request?.page) params.set("page", String(request.page));
         if (request?.region) params.set("region", request.region);
         const query = params.toString();
-        return client.get<MovieListResponse>(
-          `/movie/top_rated${query ? `?${query}` : ""}`,
+        return client.get(`/movie/top_rated${query ? `?${query}` : ""}`).pipe(
+          Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
         );
       },
     };

@@ -33,8 +33,8 @@ Deno.test({
       assertEquals(details.id, BRAD_PITT_ID);
       assertEquals(details.name, "Brad Pitt");
       assertEquals(details.birthday, "1963-12-18");
-      assertEquals(details.place_of_birth, "Shawnee, Oklahoma, USA");
-      assertEquals(details.known_for_department, "Acting");
+      assertEquals(details.placeOfBirth, "Shawnee, Oklahoma, USA");
+      assertEquals(details.knownForDepartment, "Acting");
       assertEquals(details.gender, 2); // Male
 
       // Verify biography exists
@@ -42,7 +42,7 @@ Deno.test({
       assertEquals(details.biography.length > 0, true);
 
       // Verify IMDb ID
-      assertEquals(details.imdb_id, "nm0000093");
+      assertEquals(details.imdbId, "nm0000093");
 
       // Verify popularity
       assertEquals(typeof details.popularity, "number");
@@ -179,19 +179,19 @@ Deno.test({
         true,
         "Fight Club should be in combined credits",
       );
-      assertEquals(fightClub?.media_type, "movie");
+      assertEquals(fightClub?.mediaType, "movie");
 
       // Verify we have media_type for all credits
       credits.cast.forEach((credit) => {
         assertEquals(
-          credit.media_type === "movie" || credit.media_type === "tv",
+          credit.mediaType === "movie" || credit.mediaType === "tv",
           true,
           "Each credit should have media_type",
         );
       });
 
       // Verify movie credits have title
-      const movieCredits = credits.cast.filter((c) => c.media_type === "movie");
+      const movieCredits = credits.cast.filter((c) => c.mediaType === "movie");
       if (movieCredits.length > 0) {
         movieCredits.forEach((credit) => {
           assertEquals("title" in credit, true);
@@ -199,7 +199,7 @@ Deno.test({
       }
 
       // Verify TV credits have name
-      const tvCredits = credits.cast.filter((c) => c.media_type === "tv");
+      const tvCredits = credits.cast.filter((c) => c.mediaType === "tv");
       if (tvCredits.length > 0) {
         tvCredits.forEach((credit) => {
           assertEquals("name" in credit, true);
@@ -236,7 +236,7 @@ Deno.test({
 
       // Verify first image has required fields
       const firstImage = images.profiles[0];
-      assertEquals(typeof firstImage.file_path, "string");
+      assertEquals(typeof firstImage.filePath, "string");
       assertEquals(typeof firstImage.width, "number");
       assertEquals(typeof firstImage.height, "number");
       assertEquals(firstImage.width > 0, true);
@@ -267,8 +267,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof popular.page, "number");
-      assertEquals(typeof popular.total_pages, "number");
-      assertEquals(typeof popular.total_results, "number");
+      assertEquals(typeof popular.totalPages, "number");
+      assertEquals(typeof popular.totalResults, "number");
       assertEquals(Array.isArray(popular.results), true);
       assertEquals(popular.results.length > 0, true);
 
@@ -276,19 +276,19 @@ Deno.test({
       const firstPerson = popular.results[0];
       assertEquals(typeof firstPerson.id, "number");
       assertEquals(typeof firstPerson.name, "string");
-      assertEquals(typeof firstPerson.known_for_department, "string");
+      assertEquals(typeof firstPerson.knownForDepartment, "string");
       assertEquals(typeof firstPerson.popularity, "number");
       assertEquals(firstPerson.popularity > 0, true);
 
-      // Verify known_for exists and has entries
-      if (firstPerson.known_for) {
-        assertEquals(Array.isArray(firstPerson.known_for), true);
-        if (firstPerson.known_for.length > 0) {
-          const firstKnownFor = firstPerson.known_for[0];
+      // Verify knownFor exists and has entries
+      if (firstPerson.knownFor) {
+        assertEquals(Array.isArray(firstPerson.knownFor), true);
+        if (firstPerson.knownFor.length > 0) {
+          const firstKnownFor = firstPerson.knownFor[0];
           assertEquals(typeof firstKnownFor.id, "number");
           assertEquals(
-            firstKnownFor.media_type === "movie" ||
-              firstKnownFor.media_type === "tv",
+            firstKnownFor.mediaType === "movie" ||
+              firstKnownFor.mediaType === "tv",
             true,
           );
         }

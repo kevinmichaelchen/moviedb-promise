@@ -32,9 +32,9 @@ Deno.test({
       // Verify Breaking Bad metadata
       assertEquals(details.id, BREAKING_BAD_ID);
       assertEquals(details.name, "Breaking Bad");
-      assertEquals(details.original_name, "Breaking Bad");
-      assertEquals(details.first_air_date, "2008-01-20");
-      assertEquals(details.last_air_date, "2013-09-29");
+      assertEquals(details.originalName, "Breaking Bad");
+      assertEquals(details.firstAirDate, "2008-01-20");
+      assertEquals(details.lastAirDate, "2013-09-29");
 
       // Verify tagline exists
       assertEquals(typeof details.tagline, "string");
@@ -56,12 +56,12 @@ Deno.test({
       );
 
       // Verify season/episode counts
-      assertEquals(details.number_of_seasons, 5);
-      assertEquals(details.number_of_episodes, 62);
+      assertEquals(details.numberOfSeasons, 5);
+      assertEquals(details.numberOfEpisodes, 62);
 
       // Verify show is completed
       assertEquals(details.status, "Ended");
-      assertEquals(details.in_production, false);
+      assertEquals(details.inProduction, false);
     }).pipe(
       Effect.provide(Tv.Default),
       Effect.provide(MovieDbClient.Default),
@@ -193,7 +193,7 @@ Deno.test({
 
       if (images.posters.length > 0) {
         const firstPoster = images.posters[0];
-        assertEquals(typeof firstPoster.file_path, "string");
+        assertEquals(typeof firstPoster.filePath, "string");
         assertEquals(typeof firstPoster.width, "number");
         assertEquals(typeof firstPoster.height, "number");
       }
@@ -223,8 +223,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof airingToday.page, "number");
-      assertEquals(typeof airingToday.total_pages, "number");
-      assertEquals(typeof airingToday.total_results, "number");
+      assertEquals(typeof airingToday.totalPages, "number");
+      assertEquals(typeof airingToday.totalResults, "number");
       assertEquals(Array.isArray(airingToday.results), true);
 
       // Results might be empty depending on the day
@@ -260,8 +260,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof onTheAir.page, "number");
-      assertEquals(typeof onTheAir.total_pages, "number");
-      assertEquals(typeof onTheAir.total_results, "number");
+      assertEquals(typeof onTheAir.totalPages, "number");
+      assertEquals(typeof onTheAir.totalResults, "number");
       assertEquals(Array.isArray(onTheAir.results), true);
       assertEquals(onTheAir.results.length > 0, true);
     }).pipe(
@@ -290,8 +290,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof popular.page, "number");
-      assertEquals(typeof popular.total_pages, "number");
-      assertEquals(typeof popular.total_results, "number");
+      assertEquals(typeof popular.totalPages, "number");
+      assertEquals(typeof popular.totalResults, "number");
       assertEquals(Array.isArray(popular.results), true);
       assertEquals(popular.results.length > 0, true);
     }).pipe(
@@ -320,8 +320,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof topRated.page, "number");
-      assertEquals(typeof topRated.total_pages, "number");
-      assertEquals(typeof topRated.total_results, "number");
+      assertEquals(typeof topRated.totalPages, "number");
+      assertEquals(typeof topRated.totalResults, "number");
       assertEquals(Array.isArray(topRated.results), true);
       assertEquals(topRated.results.length > 0, true);
     }).pipe(

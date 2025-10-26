@@ -32,8 +32,8 @@ Deno.test({
       // Verify Fight Club metadata
       assertEquals(details.id, FIGHT_CLUB_ID);
       assertEquals(details.title, "Fight Club");
-      assertEquals(details.original_title, "Fight Club");
-      assertEquals(details.release_date, "1999-10-15");
+      assertEquals(details.originalTitle, "Fight Club");
+      assertEquals(details.releaseDate, "1999-10-15");
       assertEquals(details.tagline, "Mischief. Mayhem. Soap.");
 
       // Verify overview contains key plot elements
@@ -168,7 +168,7 @@ Deno.test({
 
       if (images.posters.length > 0) {
         const firstPoster = images.posters[0];
-        assertEquals(typeof firstPoster.file_path, "string");
+        assertEquals(typeof firstPoster.filePath, "string");
         assertEquals(typeof firstPoster.width, "number");
         assertEquals(typeof firstPoster.height, "number");
       }
@@ -198,8 +198,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof nowPlaying.page, "number");
-      assertEquals(typeof nowPlaying.total_pages, "number");
-      assertEquals(typeof nowPlaying.total_results, "number");
+      assertEquals(typeof nowPlaying.totalPages, "number");
+      assertEquals(typeof nowPlaying.totalResults, "number");
       assertEquals(Array.isArray(nowPlaying.results), true);
       assertEquals(nowPlaying.results.length > 0, true);
 
@@ -234,8 +234,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof popular.page, "number");
-      assertEquals(typeof popular.total_pages, "number");
-      assertEquals(typeof popular.total_results, "number");
+      assertEquals(typeof popular.totalPages, "number");
+      assertEquals(typeof popular.totalResults, "number");
       assertEquals(Array.isArray(popular.results), true);
       assertEquals(popular.results.length > 0, true);
     }).pipe(
@@ -264,8 +264,8 @@ Deno.test({
 
       // Verify pagination structure
       assertEquals(typeof topRated.page, "number");
-      assertEquals(typeof topRated.total_pages, "number");
-      assertEquals(typeof topRated.total_results, "number");
+      assertEquals(typeof topRated.totalPages, "number");
+      assertEquals(typeof topRated.totalResults, "number");
       assertEquals(Array.isArray(topRated.results), true);
       assertEquals(topRated.results.length > 0, true);
     }).pipe(

@@ -4,7 +4,7 @@
  * Uses Effect's Data.TaggedError for exhaustive error handling and pattern matching.
  */
 
-import { Data, Match } from "effect";
+import { Data, Match, ParseResult } from "effect";
 
 /**
  * Base error for all MovieDb-related errors
@@ -97,7 +97,8 @@ export class TimeoutError extends Data.TaggedError("TimeoutError")<{
  * Effect.catchTags({
  *   NotFoundError: (error) => Effect.succeed(null),
  *   RateLimitError: (error) => Effect.sleep(error.retryAfter ?? 5000),
- *   NetworkError: (error) => Effect.retry(...)
+ *   NetworkError: (error) => Effect.retry(...),
+ *   ParseError: (error) => Effect.fail(new ValidationError({ message: error.message }))
  * })
  * ```
  */
@@ -109,7 +110,8 @@ export type MovieDbErrors =
   | NotFoundError
   | ValidationError
   | ServerError
-  | TimeoutError;
+  | TimeoutError
+  | ParseResult.ParseError;
 
 /**
  * Helper to create a NetworkError from an unknown error

@@ -25,7 +25,7 @@ Deno.test({
     // Verify Fight Club metadata
     assertEquals(movie.id, FIGHT_CLUB_ID);
     assertEquals(movie.title, "Fight Club");
-    assertEquals(movie.release_date, "1999-10-15");
+    assertEquals(movie.releaseDate, "1999-10-15");
   },
 });
 
@@ -89,7 +89,7 @@ Deno.test({
 
     // Verify pagination structure
     assertEquals(typeof popular.page, "number");
-    assertEquals(typeof popular.total_pages, "number");
+    assertEquals(typeof popular.totalPages, "number");
     assertEquals(Array.isArray(popular.results), true);
     assertEquals(popular.results.length > 0, true);
   },
@@ -108,7 +108,7 @@ Deno.test({
     // Verify Breaking Bad metadata
     assertEquals(tv.id, BREAKING_BAD_ID);
     assertEquals(tv.name, "Breaking Bad");
-    assertEquals(tv.number_of_seasons, 5);
+    assertEquals(tv.numberOfSeasons, 5);
   },
 });
 
@@ -142,7 +142,7 @@ Deno.test({
 
     // Verify pagination structure
     assertEquals(typeof popular.page, "number");
-    assertEquals(typeof popular.total_pages, "number");
+    assertEquals(typeof popular.totalPages, "number");
     assertEquals(Array.isArray(popular.results), true);
     assertEquals(popular.results.length > 0, true);
   },
@@ -163,7 +163,7 @@ Deno.test({
 
     // Find Fight Club in results
     const fightClub = results.results.find(
-      (m) => m.title === "Fight Club" && m.release_date === "1999-10-15",
+      (m) => m.title === "Fight Club" && m.releaseDate === "1999-10-15",
     );
     assertEquals(fightClub !== undefined, true);
     assertEquals(fightClub?.id, FIGHT_CLUB_ID);
@@ -186,7 +186,7 @@ Deno.test({
     // Find Breaking Bad in results
     const breakingBad = results.results.find(
       (show) =>
-        show.name === "Breaking Bad" && show.first_air_date === "2008-01-20",
+        show.name === "Breaking Bad" && show.firstAirDate === "2008-01-20",
     );
     assertEquals(breakingBad !== undefined, true);
     assertEquals(breakingBad?.id, BREAKING_BAD_ID);
@@ -263,7 +263,7 @@ Deno.test({
 
     // Verify pagination structure
     assertEquals(typeof popular.page, "number");
-    assertEquals(typeof popular.total_pages, "number");
+    assertEquals(typeof popular.totalPages, "number");
     assertEquals(Array.isArray(popular.results), true);
     assertEquals(popular.results.length > 0, true);
   },
