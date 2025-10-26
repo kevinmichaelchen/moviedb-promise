@@ -1,8 +1,13 @@
 # Effect Refactoring Brainstorm for moviedb-promise
 
-This document outlines ideas and strategies for refactoring the `moviedb-promise` library to use [Effect](https://effect.website/), a powerful TypeScript library for building complex, synchronous, and asynchronous programs with advanced error handling, dependency injection, and resource management.
+This document outlines ideas and strategies for refactoring the
+`moviedb-promise` library to use [Effect](https://effect.website/), a powerful
+TypeScript library for building complex, synchronous, and asynchronous programs
+with advanced error handling, dependency injection, and resource management.
 
-> **📘 Companion Document**: For a detailed analysis of rate limiting strategies (Throttling, Buffering, Debouncing, Semaphores, and Queues), see **[RATE_LIMITING_ANALYSIS.md](./RATE_LIMITING_ANALYSIS.md)**
+> **📘 Companion Document**: For a detailed analysis of rate limiting strategies
+> (Throttling, Buffering, Debouncing, Semaphores, and Queues), see
+> **[RATE_LIMITING_ANALYSIS.md](./RATE_LIMITING_ANALYSIS.md)**
 
 ## Table of Contents
 
@@ -23,7 +28,8 @@ This document outlines ideas and strategies for refactoring the `moviedb-promise
 The current `moviedb-promise` library (v4.0.7) is built with:
 
 - **HTTP Client**: Uses `axios` for making HTTP requests
-- **Rate Limiting**: Uses `promise-throttle` for managing API rate limits (50 requests/second by default)
+- **Rate Limiting**: Uses `promise-throttle` for managing API rate limits (50
+  requests/second by default)
 - **State Management**: Class-based approach with instance properties:
   - `apiKey`: API key for authentication
   - `token`: Cached authentication token with expiration
@@ -35,11 +41,15 @@ The current `moviedb-promise` library (v4.0.7) is built with:
 
 ### Pain Points
 
-1. **Limited Error Types**: No typed error channels - errors are generic Promise rejections
+1. **Limited Error Types**: No typed error channels - errors are generic Promise
+   rejections
 2. **Manual Resource Management**: Token caching and expiration handled manually
-3. **Implicit Dependencies**: Services like axios are hard-coded, making testing difficult
-4. **No Built-in Retry Logic**: Clients must implement their own retry mechanisms
-5. **Rate Limiting Abstraction**: The throttle queue is an implementation detail exposed through the constructor
+3. **Implicit Dependencies**: Services like axios are hard-coded, making testing
+   difficult
+4. **No Built-in Retry Logic**: Clients must implement their own retry
+   mechanisms
+5. **Rate Limiting Abstraction**: The throttle queue is an implementation detail
+   exposed through the constructor
 6. **Type Safety**: Limited type-level guarantees about effects and dependencies
 
 ---
@@ -48,7 +58,8 @@ The current `moviedb-promise` library (v4.0.7) is built with:
 
 ### 1. **Typed Error Handling**
 
-Effect provides a typed error channel, making error handling explicit and composable:
+Effect provides a typed error channel, making error handling explicit and
+composable:
 
 ```typescript
 Effect<Success, Error, Requirements>
@@ -60,6 +71,7 @@ Effect<Success, Error, Requirements>
 ### 2. **Service-Based Architecture**
 
 Effect's Context and Layer system enables:
+
 - Dependency injection at the type level
 - Easy mocking for tests
 - Clean separation of concerns
@@ -68,6 +80,7 @@ Effect's Context and Layer system enables:
 ### 3. **Built-in Retry & Resilience**
 
 Effect includes powerful retry mechanisms with:
+
 - Exponential backoff
 - Configurable retry policies
 - Schedule combinators
@@ -75,6 +88,7 @@ Effect includes powerful retry mechanisms with:
 ### 4. **Resource Management**
 
 Effect's Scope system ensures:
+
 - Automatic cleanup of resources
 - Safe handling of long-lived connections
 - Structured concurrency
@@ -82,6 +96,7 @@ Effect's Scope system ensures:
 ### 5. **Observability**
 
 Effect provides first-class support for:
+
 - Distributed tracing
 - Structured logging
 - Metrics collection
@@ -142,12 +157,14 @@ Effect provides first-class support for:
 **Proposed**: Use `@effect/platform`'s HttpClient service
 
 **Benefits**:
+
 - Native Effect integration
 - Automatic tracing and observability
 - Type-safe error handling
 - Built-in retry mechanisms
 
 **Dependencies**:
+
 ```bash
 npm install @effect/platform @effect/platform-node
 ```
@@ -162,14 +179,15 @@ npm install @effect/platform @effect/platform-node
 class MovieDbConfig extends Context.Tag("MovieDbConfig")<
   MovieDbConfig,
   {
-    readonly apiKey: string
-    readonly baseUrl: string
-    readonly requestsPerSecond: number
+    readonly apiKey: string;
+    readonly baseUrl: string;
+    readonly requestsPerSecond: number;
   }
 >() {}
 ```
 
 **Benefits**:
+
 - Testable configuration
 - Environment-based configuration
 - Type-safe access
@@ -178,7 +196,8 @@ class MovieDbConfig extends Context.Tag("MovieDbConfig")<
 
 **Current**: `promise-throttle` queue in `moviedb.ts:10,17-20`
 
-**Proposed**: Multiple strategies available (see detailed analysis in `RATE_LIMITING_ANALYSIS.md`)
+**Proposed**: Multiple strategies available (see detailed analysis in
+`RATE_LIMITING_ANALYSIS.md`)
 
 **Recommended Approach**: Buffered Throttling using Effect's `Stream.throttle`
 
@@ -188,11 +207,12 @@ Stream.throttle({
   duration: "1 second",
   units: 50,
   burst: 10,
-  strategy: "shape"
-})
+  strategy: "shape",
+});
 ```
 
 **Benefits**:
+
 - Token bucket algorithm (industry standard)
 - Burst support for better UX
 - Built-in backpressure for memory safety
@@ -200,11 +220,13 @@ Stream.throttle({
 - Composable with buffering and other stream operations
 
 **Alternative Patterns**:
+
 - **Semaphore**: For concurrent connection limits
 - **Queue + Worker**: For explicit queue management
 - **Debouncing**: For search-as-you-type features (supplement, not replacement)
 
-**⚠️ See `RATE_LIMITING_ANALYSIS.md` for comprehensive comparison of Throttling, Buffering, Debouncing, Semaphores, and Queues.**
+**⚠️ See `RATE_LIMITING_ANALYSIS.md` for comprehensive comparison of Throttling,
+Buffering, Debouncing, Semaphores, and Queues.**
 
 ### 4. **Authentication Service**
 
@@ -213,6 +235,7 @@ Stream.throttle({
 **Proposed**: Dedicated `MovieDbAuth` service with cached token management
 
 **Benefits**:
+
 - Separation of concerns
 - Automatic token refresh using Effect's resource management
 - Built-in expiration handling with `Resource.auto`
@@ -228,24 +251,25 @@ Stream.throttle({
 ```typescript
 // Domain errors
 export class MovieDbError extends Data.TaggedError("MovieDbError")<{
-  readonly message: string
+  readonly message: string;
 }> {}
 
 export class NetworkError extends Data.TaggedError("NetworkError")<{
-  readonly cause: unknown
+  readonly cause: unknown;
 }> {}
 
-export class AuthenticationError extends Data.TaggedError("AuthenticationError")<{
-  readonly message: string
-}> {}
+export class AuthenticationError
+  extends Data.TaggedError("AuthenticationError")<{
+    readonly message: string;
+  }> {}
 
 export class RateLimitError extends Data.TaggedError("RateLimitError")<{
-  readonly retryAfter?: number
+  readonly retryAfter?: number;
 }> {}
 
 export class NotFoundError extends Data.TaggedError("NotFoundError")<{
-  readonly resource: string
-  readonly id: string | number
+  readonly resource: string;
+  readonly id: string | number;
 }> {}
 
 export type MovieDbErrors =
@@ -253,10 +277,11 @@ export type MovieDbErrors =
   | AuthenticationError
   | RateLimitError
   | NotFoundError
-  | MovieDbError
+  | MovieDbError;
 ```
 
 **Benefits**:
+
 - Exhaustive error handling at compile time
 - Pattern matching on errors
 - Better error messages
@@ -280,6 +305,7 @@ const movieInfo = (id: number) =>
 ```
 
 **Benefits**:
+
 - Resilient to transient failures
 - Configurable backoff strategies
 - Composable retry policies
@@ -291,6 +317,7 @@ const movieInfo = (id: number) =>
 **Proposed**: Use Effect's pipeline operators for request transformation
 
 **Benefits**:
+
 - Composable request transformations
 - Declarative pipeline definition
 - Easy to add middleware (logging, tracing, etc.)
@@ -309,11 +336,12 @@ const fetchMovies = (ids: number[]) =>
   Effect.forEach(
     ids,
     (id) => movieInfo(id),
-    { concurrency: 10 }
-  )
+    { concurrency: 10 },
+  );
 ```
 
 **Benefits**:
+
 - Controlled parallelism
 - Automatic error handling across concurrent operations
 - Respects rate limits through RateLimiter service
@@ -389,16 +417,16 @@ const fetchMovies = (ids: number[]) =>
 ### Example 1: Service Definition
 
 ```typescript
-import { Context, Effect, Layer } from "effect"
-import { HttpClient } from "@effect/platform"
+import { Context, Effect, Layer } from "effect";
+import { HttpClient } from "@effect/platform";
 
 // Config service
 export class MovieDbConfig extends Context.Tag("MovieDbConfig")<
   MovieDbConfig,
   {
-    readonly apiKey: string
-    readonly baseUrl: string
-    readonly requestsPerSecond: number
+    readonly apiKey: string;
+    readonly baseUrl: string;
+    readonly requestsPerSecond: number;
   }
 >() {}
 
@@ -406,8 +434,8 @@ export class MovieDbConfig extends Context.Tag("MovieDbConfig")<
 export class MovieDbAuth extends Context.Tag("MovieDbAuth")<
   MovieDbAuth,
   {
-    readonly getToken: Effect.Effect<string, AuthenticationError>
-    readonly getSession: Effect.Effect<string, AuthenticationError>
+    readonly getToken: Effect.Effect<string, AuthenticationError>;
+    readonly getSession: Effect.Effect<string, AuthenticationError>;
   }
 >() {}
 
@@ -416,11 +444,11 @@ export class MovieDbClient extends Context.Tag("MovieDbClient")<
   MovieDbClient,
   {
     readonly movieInfo: (
-      id: number
-    ) => Effect.Effect<MovieResponse, MovieDbErrors>
+      id: number,
+    ) => Effect.Effect<MovieResponse, MovieDbErrors>;
     readonly searchMovie: (
-      query: string
-    ) => Effect.Effect<SearchResults, MovieDbErrors>
+      query: string,
+    ) => Effect.Effect<SearchResults, MovieDbErrors>;
     // ... other methods
   }
 >() {}
@@ -429,15 +457,15 @@ export class MovieDbClient extends Context.Tag("MovieDbClient")<
 ### Example 2: Implementation with Layers
 
 ```typescript
-import { Effect, Layer, Context } from "effect"
-import { HttpClient } from "@effect/platform"
+import { Context, Effect, Layer } from "effect";
+import { HttpClient } from "@effect/platform";
 
 // Auth service implementation
 export const MovieDbAuthLive = Layer.effect(
   MovieDbAuth,
   Effect.gen(function* () {
-    const config = yield* MovieDbConfig
-    const http = yield* HttpClient.HttpClient
+    const config = yield* MovieDbConfig;
+    const http = yield* HttpClient.HttpClient;
 
     // Token cache using Resource for auto-refresh
     const tokenResource = yield* Effect.acquireRelease(
@@ -445,119 +473,119 @@ export const MovieDbAuthLive = Layer.effect(
         const response = yield* http.get(
           `${config.baseUrl}/authentication/token/new`,
           {
-            searchParams: { api_key: config.apiKey }
-          }
-        )
-        const token = yield* response.json
+            searchParams: { api_key: config.apiKey },
+          },
+        );
+        const token = yield* response.json;
         return {
           value: token.request_token,
-          expiresAt: new Date(token.expires_at)
-        }
+          expiresAt: new Date(token.expires_at),
+        };
       }),
-      () => Effect.void // Cleanup
-    )
+      () => Effect.void, // Cleanup
+    );
 
     return {
       getToken: Effect.succeed(tokenResource.value),
       getSession: Effect.gen(function* () {
-        const token = yield* this.getToken
+        const token = yield* this.getToken;
         const response = yield* http.get(
           `${config.baseUrl}/authentication/session/new`,
           {
             searchParams: {
               api_key: config.apiKey,
-              request_token: token
-            }
-          }
-        )
-        const data = yield* response.json
-        return data.session_id
-      })
-    }
-  })
-)
+              request_token: token,
+            },
+          },
+        );
+        const data = yield* response.json;
+        return data.session_id;
+      }),
+    };
+  }),
+);
 ```
 
 ### Example 3: Using the Service
 
 ```typescript
-import { Effect } from "effect"
+import { Effect } from "effect";
 
 // Using the service in application code
 const program = Effect.gen(function* () {
-  const client = yield* MovieDbClient
+  const client = yield* MovieDbClient;
 
   // Get movie info with automatic retry on transient failures
-  const movie = yield* client.movieInfo(550)
+  const movie = yield* client.movieInfo(550);
 
-  console.log(`Title: ${movie.title}`)
-  console.log(`Rating: ${movie.vote_average}`)
-})
+  console.log(`Title: ${movie.title}`);
+  console.log(`Rating: ${movie.vote_average}`);
+});
 
 // Provide all layers and run
 const runnable = program.pipe(
   Effect.provide(MovieDbClientLive),
   Effect.provide(MovieDbAuthLive),
   Effect.provide(RateLimiterLive),
-  Effect.provide(HttpClient.layer)
-)
+  Effect.provide(HttpClient.layer),
+);
 
-Effect.runPromise(runnable)
+Effect.runPromise(runnable);
 ```
 
 ### Example 4: Error Handling
 
 ```typescript
-import { Effect, Match } from "effect"
+import { Effect, Match } from "effect";
 
 const program = Effect.gen(function* () {
-  const client = yield* MovieDbClient
+  const client = yield* MovieDbClient;
 
   const result = yield* client.movieInfo(99999).pipe(
     Effect.catchTags({
       NotFoundError: (error) =>
         Effect.succeed({
           title: "Movie not found",
-          error: error.message
+          error: error.message,
         }),
       RateLimitError: (error) =>
         Effect.gen(function* () {
-          yield* Effect.sleep(error.retryAfter ?? "5 seconds")
-          return yield* client.movieInfo(99999)
+          yield* Effect.sleep(error.retryAfter ?? "5 seconds");
+          return yield* client.movieInfo(99999);
         }),
       NetworkError: (error) =>
         Effect.retry(
           client.movieInfo(99999),
-          Schedule.exponential("1 second")
-        )
-    })
-  )
+          Schedule.exponential("1 second"),
+        ),
+    }),
+  );
 
-  return result
-})
+  return result;
+});
 ```
 
 ### Example 5: Batch Operations with Concurrency
 
 ```typescript
-import { Effect } from "effect"
+import { Effect } from "effect";
 
 const fetchMultipleMovies = (ids: number[]) =>
   Effect.gen(function* () {
-    const client = yield* MovieDbClient
+    const client = yield* MovieDbClient;
 
     // Fetch up to 10 movies concurrently
     const movies = yield* Effect.forEach(
       ids,
       (id) => client.movieInfo(id),
-      { concurrency: 10 }
-    )
+      { concurrency: 10 },
+    );
 
-    return movies
-  })
+    return movies;
+  });
 
 // Usage
-const program = fetchMultipleMovies([550, 551, 552, 553, 554])
+const program = fetchMultipleMovies([550, 551, 552, 553, 554]);
 ```
 
 ---
@@ -569,6 +597,7 @@ const program = fetchMultipleMovies([550, 551, 552, 553, 554])
 **Challenge**: Effect introduces a fundamentally different programming model
 
 **Mitigation**:
+
 - Create compatibility layer that wraps Effect programs in Promises
 - Provide gradual migration path
 - Maintain v4.x for existing users while developing v5.x with Effect
@@ -578,16 +607,19 @@ const program = fetchMultipleMovies([550, 551, 552, 553, 554])
 **Challenge**: Effect adds ~100KB to bundle size
 
 **Mitigation**:
+
 - Tree-shaking optimization
 - Provide ESM builds
 - Document bundle size impact
-- Consider creating a micro version using `effect/Micro` for size-sensitive applications
+- Consider creating a micro version using `effect/Micro` for size-sensitive
+  applications
 
 ### 3. **Learning Curve**
 
 **Challenge**: Effect has a steeper learning curve than Promises
 
 **Mitigation**:
+
 - Comprehensive documentation with examples
 - Migration guide
 - Video tutorials
@@ -598,6 +630,7 @@ const program = fetchMultipleMovies([550, 551, 552, 553, 554])
 **Challenge**: Effect requires TypeScript 5.0+
 
 **Mitigation**:
+
 - Document version requirements clearly
 - Provide polyfills if possible
 - Consider this a major version bump (v5.0.0)
@@ -607,6 +640,7 @@ const program = fetchMultipleMovies([550, 551, 552, 553, 554])
 **Challenge**: Testing Effect code requires different patterns
 
 **Mitigation**:
+
 - Provide test utilities
 - Document testing patterns
 - Create example test suites
@@ -617,6 +651,7 @@ const program = fetchMultipleMovies([550, 551, 552, 553, 554])
 **Challenge**: Some API endpoints return large datasets
 
 **Opportunity**:
+
 - Use Effect's Stream for pagination
 - Implement cursor-based pagination
 - Automatic backpressure handling
@@ -661,14 +696,16 @@ const program = fetchMultipleMovies([550, 551, 552, 553, 554])
 
 Refactoring `moviedb-promise` to use Effect would provide:
 
-✅ **Type-safe error handling** with exhaustive checking
-✅ **Dependency injection** through services and layers
-✅ **Built-in retry logic** with exponential backoff
-✅ **Better resource management** with automatic cleanup
-✅ **Observability** through tracing and logging
-✅ **Concurrent operations** with controlled parallelism
-✅ **Composable abstractions** for building complex workflows
+✅ **Type-safe error handling** with exhaustive checking ✅ **Dependency
+injection** through services and layers ✅ **Built-in retry logic** with
+exponential backoff ✅ **Better resource management** with automatic cleanup ✅
+**Observability** through tracing and logging ✅ **Concurrent operations** with
+controlled parallelism ✅ **Composable abstractions** for building complex
+workflows
 
-While the migration requires significant effort and introduces breaking changes, the benefits of Effect's programming model would make the library more robust, maintainable, and developer-friendly for building production applications.
+While the migration requires significant effort and introduces breaking changes,
+the benefits of Effect's programming model would make the library more robust,
+maintainable, and developer-friendly for building production applications.
 
-The key is to approach this as a major version bump (v5.0.0) with a clear migration path and compatibility layer for existing users.
+The key is to approach this as a major version bump (v5.0.0) with a clear
+migration path and compatibility layer for existing users.

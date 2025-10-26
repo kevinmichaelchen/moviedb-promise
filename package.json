@@ -41,7 +41,10 @@
     "Alexander Roidl (https://github.com/alexanderroidl)"
   ],
   "dependencies": {
+    "@effect/platform": "^0.92.1",
+    "@effect/platform-node": "^0.98.4",
     "axios": "^1.4.0",
+    "effect": "^3.18.4",
     "lodash": "^4.17.21",
     "promise-throttle": "^1.1.2"
   },
