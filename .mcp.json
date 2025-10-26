@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "effect-patterns": {
+      "command": "node",
+      "args": [
+        "/Users/kevinchen/dev/github.com/PaulJPhilp/EffectPatterns/services/mcp-server-stdio/dist/index.js"
+      ]
+    }
+  }
+}
