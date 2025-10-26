@@ -139,15 +139,26 @@ export const makeRateLimiter = (
 ): Effect.Effect<RateLimiterService, never, never> => {
   return Effect.gen(function* () {
     // Create metrics for tracking statistics
-    const completedCounter = Metric.counter("moviedb_requests_completed", {
+    const baseCompletedCounter = Metric.counter("moviedb_requests_completed", {
       description: "Number of rate-limited requests completed",
       incremental: true,
     });
 
-    const droppedCounter = Metric.counter("moviedb_requests_dropped", {
+    const baseDroppedCounter = Metric.counter("moviedb_requests_dropped", {
       description: "Number of requests dropped due to buffer overflow",
       incremental: true,
     });
+
+    // Apply tags for test isolation if provided
+    const completedCounter = config.metricsTag
+      ? baseCompletedCounter.pipe(
+        Metric.tagged("instance", config.metricsTag),
+      )
+      : baseCompletedCounter;
+
+    const droppedCounter = config.metricsTag
+      ? baseDroppedCounter.pipe(Metric.tagged("instance", config.metricsTag))
+      : baseDroppedCounter;
 
     // Create semaphore for concurrent connection limits
     const semaphore = yield* Effect.makeSemaphore(config.maxConcurrent ?? 10);

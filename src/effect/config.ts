@@ -55,6 +55,12 @@ export interface MovieDbConfigOptions {
    * @default 10
    */
   readonly maxConcurrent?: number;
+
+  /**
+   * Tag applied to all metrics for isolation (useful for testing)
+   * @default undefined
+   */
+  readonly metricsTag?: string;
 }
 
 /**
