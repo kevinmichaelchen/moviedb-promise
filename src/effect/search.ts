@@ -5,10 +5,11 @@
  * All responses are validated and transformed from snake_case to camelCase.
  */
 
-import { Effect, Schema } from "effect";
+import { Effect, Schema, Stream } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
 import * as SearchSchemas from "./schemas/search.ts";
+import { paginatedStream, type PaginationOptions } from "./streaming.ts";
 
 /**
  * Re-export schema types for external use
@@ -212,6 +213,144 @@ export class Search extends Effect.Service<Search>()("Search", {
           Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchMultiResponse)),
         );
       },
+
+      /**
+       * Stream movie search results across all pages
+       *
+       * @param request - Search query and optional filters
+       * @param options - Pagination options
+       * @returns Stream of movie search results
+       */
+      streamSearchMovie: (
+        request: Omit<SearchMovieRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<MovieSearchResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            params.set("query", request.query);
+            if (request.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request.include_adult !== undefined) {
+              params.set("include_adult", String(request.include_adult));
+            }
+            if (request.region) params.set("region", request.region);
+            if (request.year) params.set("year", String(request.year));
+            if (request.primary_release_year) {
+              params.set(
+                "primary_release_year",
+                String(request.primary_release_year),
+              );
+            }
+
+            return client.get(`/search/movie?${params.toString()}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchMovieResponse)),
+              Effect.withSpan("search.stream.movie", {
+                attributes: { "pagination.page": page, query: request.query },
+              }),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream TV show search results across all pages
+       *
+       * @param request - Search query and optional filters
+       * @param options - Pagination options
+       * @returns Stream of TV show search results
+       */
+      streamSearchTv: (
+        request: Omit<SearchTvRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<TvSearchResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            params.set("query", request.query);
+            if (request.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request.include_adult !== undefined) {
+              params.set("include_adult", String(request.include_adult));
+            }
+            if (request.first_air_date_year) {
+              params.set(
+                "first_air_date_year",
+                String(request.first_air_date_year),
+              );
+            }
+
+            return client.get(`/search/tv?${params.toString()}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchTvResponse)),
+              Effect.withSpan("search.stream.tv", {
+                attributes: { "pagination.page": page, query: request.query },
+              }),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream person search results across all pages
+       *
+       * @param request - Search query and optional filters
+       * @param options - Pagination options
+       * @returns Stream of person search results
+       */
+      streamSearchPerson: (
+        request: Omit<SearchPersonRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<PersonSearchResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            params.set("query", request.query);
+            if (request.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request.include_adult !== undefined) {
+              params.set("include_adult", String(request.include_adult));
+            }
+
+            return client.get(`/search/person?${params.toString()}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchPersonResponse)),
+              Effect.withSpan("search.stream.person", {
+                attributes: { "pagination.page": page, query: request.query },
+              }),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream multi-search results across all pages
+       *
+       * @param request - Search query and optional filters
+       * @param options - Pagination options
+       * @returns Stream of multi-search results
+       */
+      streamSearchMulti: (
+        request: Omit<SearchMultiRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<MultiSearchResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            params.set("query", request.query);
+            if (request.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request.include_adult !== undefined) {
+              params.set("include_adult", String(request.include_adult));
+            }
+
+            return client.get(`/search/multi?${params.toString()}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(SearchSchemas.SearchMultiResponse)),
+              Effect.withSpan("search.stream.multi", {
+                attributes: { "pagination.page": page, query: request.query },
+              }),
+            );
+          },
+          options,
+        ),
     };
   }),
 }) {}

@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/assert@*": "1.0.11",
     "jsr:@std/assert@1": "1.0.11",
     "jsr:@std/internal@^1.0.5": "1.0.12",
     "npm:@effect/platform-node@~0.98.4": "0.98.4_@effect+cluster@0.50.6__@effect+platform@0.92.1___effect@3.18.4__@effect+rpc@0.71.1___@effect+platform@0.92.1____effect@3.18.4___effect@3.18.4__@effect+sql@0.46.0___@effect+experimental@0.56.0____@effect+platform@0.92.1_____effect@3.18.4____effect@3.18.4___@effect+platform@0.92.1____effect@3.18.4___effect@3.18.4__@effect+workflow@0.11.5___@effect+platform@0.92.1____effect@3.18.4___@effect+rpc@0.71.1____@effect+platform@0.92.1_____effect@3.18.4____effect@3.18.4___effect@3.18.4__effect@3.18.4_@effect+platform@0.92.1__effect@3.18.4_@effect+rpc@0.71.1__@effect+platform@0.92.1___effect@3.18.4__effect@3.18.4_@effect+sql@0.46.0__@effect+experimental@0.56.0___@effect+platform@0.92.1____effect@3.18.4___effect@3.18.4__@effect+platform@0.92.1___effect@3.18.4__effect@3.18.4_effect@3.18.4",

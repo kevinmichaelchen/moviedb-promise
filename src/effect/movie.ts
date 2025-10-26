@@ -3,12 +3,14 @@
  *
  * Provides Effect-based methods for movie-related endpoints.
  * All responses are validated and transformed from snake_case to camelCase.
+ * Includes streaming methods for efficient pagination.
  */
 
-import { Effect, Schema } from "effect";
+import { Effect, Schema, Stream } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
 import * as MovieSchemas from "./schemas/movie.ts";
+import { paginatedStream, type PaginationOptions } from "./streaming.ts";
 
 /**
  * Re-export schema types for external use
@@ -237,6 +239,101 @@ export class Movie extends Effect.Service<Movie>()("Movie", {
           Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
         );
       },
+
+      /**
+       * Stream now playing movies across all pages
+       *
+       * Returns a Stream that automatically paginates through all pages,
+       * yielding individual movie results. Supports backpressure and lazy evaluation.
+       *
+       * @param request - Optional language and region
+       * @param options - Pagination options (maxPages, maxResults)
+       * @returns Stream of now playing movies
+       *
+       * @example
+       * ```ts
+       * // Get first 100 now playing movies
+       * const movies = yield* movie.streamNowPlaying({ language: "en-US" }, { maxResults: 100 }).pipe(
+       *   Stream.runCollect
+       * )
+       *
+       * // Process movies one at a time with controlled concurrency
+       * yield* movie.streamNowPlaying().pipe(
+       *   Stream.mapEffect((m) => processMovie(m), { concurrency: 5 }),
+       *   Stream.runDrain
+       * )
+       * ```
+       */
+      streamNowPlaying: (
+        request?: Omit<MovieListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<MovieListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request?.region) params.set("region", request.region);
+            const query = params.toString();
+            return client.get(`/movie/now_playing${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
+              Effect.withSpan("movie.stream.now_playing", {
+                attributes: { "pagination.page": page },
+              }),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream popular movies across all pages
+       *
+       * @param request - Optional language and region
+       * @param options - Pagination options
+       * @returns Stream of popular movies
+       */
+      streamPopular: (
+        request?: Omit<MovieListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<MovieListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request?.region) params.set("region", request.region);
+            const query = params.toString();
+            return client.get(`/movie/popular${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream top rated movies across all pages
+       *
+       * @param request - Optional language and region
+       * @param options - Pagination options
+       * @returns Stream of top rated movies
+       */
+      streamTopRated: (
+        request?: Omit<MovieListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<MovieListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request?.region) params.set("region", request.region);
+            const query = params.toString();
+            return client.get(`/movie/top_rated${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(MovieSchemas.MovieListResponse)),
+            );
+          },
+          options,
+        ),
     };
   }),
 }) {}

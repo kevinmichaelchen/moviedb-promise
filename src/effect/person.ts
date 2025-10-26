@@ -5,10 +5,11 @@
  * All responses are validated and transformed from snake_case to camelCase.
  */
 
-import { Effect, Schema } from "effect";
+import { Effect, Schema, Stream } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
 import * as PersonSchemas from "./schemas/person.ts";
+import { paginatedStream, type PaginationOptions } from "./streaming.ts";
 
 /**
  * Re-export schema types for external use
@@ -201,6 +202,33 @@ export class Person extends Effect.Service<Person>()("Person", {
           Effect.flatMap(Schema.decodeUnknown(PersonSchemas.PersonPopularResponse)),
         );
       },
+
+      /**
+       * Stream popular people across all pages
+       *
+       * @param request - Optional language
+       * @param options - Pagination options
+       * @returns Stream of popular people
+       */
+      streamPopular: (
+        request?: Omit<PersonPopularRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<PersonPopularResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            const query = params.toString();
+            return client.get(`/person/popular${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(PersonSchemas.PersonPopularResponse)),
+              Effect.withSpan("person.stream.popular", {
+                attributes: { "pagination.page": page },
+              }),
+            );
+          },
+          options,
+        ),
     };
   }),
 }) {}

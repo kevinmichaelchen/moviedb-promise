@@ -5,10 +5,11 @@
  * All responses are validated and transformed from snake_case to camelCase.
  */
 
-import { Effect, Schema } from "effect";
+import { Effect, Schema, Stream } from "effect";
 import { MovieDbClient } from "./client.ts";
 import type { MovieDbErrors } from "./errors.ts";
 import * as TvSchemas from "./schemas/tv.ts";
+import { paginatedStream, type PaginationOptions } from "./streaming.ts";
 
 /**
  * Re-export schema types for external use
@@ -259,6 +260,120 @@ export class Tv extends Effect.Service<Tv>()("Tv", {
           Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
         );
       },
+
+      /**
+       * Stream TV shows airing today across all pages
+       *
+       * @param request - Optional language and timezone
+       * @param options - Pagination options
+       * @returns Stream of airing today TV shows
+       */
+      streamAiringToday: (
+        request?: Omit<TvListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<TvShowListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request?.timezone) params.set("timezone", request.timezone);
+            const query = params.toString();
+            return client
+              .get(`/tv/airing_today${query ? `?${query}` : ""}`)
+              .pipe(
+                Effect.flatMap(
+                  Schema.decodeUnknown(TvSchemas.TvShowListResponse),
+                ),
+                Effect.withSpan("tv.stream.airing_today", {
+                  attributes: { "pagination.page": page },
+                }),
+              );
+          },
+          options,
+        ),
+
+      /**
+       * Stream TV shows currently on the air across all pages
+       *
+       * @param request - Optional language and timezone
+       * @param options - Pagination options
+       * @returns Stream of on the air TV shows
+       */
+      streamOnTheAir: (
+        request?: Omit<TvListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<TvShowListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            if (request?.timezone) params.set("timezone", request.timezone);
+            const query = params.toString();
+            return client.get(`/tv/on_the_air${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
+              Effect.withSpan("tv.stream.on_the_air", {
+                attributes: { "pagination.page": page },
+              }),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream popular TV shows across all pages
+       *
+       * @param request - Optional language
+       * @param options - Pagination options
+       * @returns Stream of popular TV shows
+       */
+      streamPopular: (
+        request?: Omit<TvListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<TvShowListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            const query = params.toString();
+            return client.get(`/tv/popular${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
+              Effect.withSpan("tv.stream.popular", {
+                attributes: { "pagination.page": page },
+              }),
+            );
+          },
+          options,
+        ),
+
+      /**
+       * Stream top rated TV shows across all pages
+       *
+       * @param request - Optional language
+       * @param options - Pagination options
+       * @returns Stream of top rated TV shows
+       */
+      streamTopRated: (
+        request?: Omit<TvListRequest, "page">,
+        options?: PaginationOptions,
+      ): Stream.Stream<TvShowListResult, MovieDbErrors, never> =>
+        paginatedStream(
+          (page) => {
+            const params = new URLSearchParams();
+            if (request?.language) params.set("language", request.language);
+            params.set("page", String(page));
+            const query = params.toString();
+            return client.get(`/tv/top_rated${query ? `?${query}` : ""}`).pipe(
+              Effect.flatMap(Schema.decodeUnknown(TvSchemas.TvShowListResponse)),
+              Effect.withSpan("tv.stream.top_rated", {
+                attributes: { "pagination.page": page },
+              }),
+            );
+          },
+          options,
+        ),
     };
   }),
 }) {}
