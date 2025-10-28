@@ -2,460 +2,507 @@
 
 [![npm](https://img.shields.io/npm/dw/moviedb-promise.svg?style=for-the-badge)](https://www.npmjs.com/package/moviedb-promise)
 
-A Node library that makes the interaction with themoviedb.org V3 API easy... Now in TypeScript!
+A modern, type-safe TypeScript client for The Movie Database (TMDb) API, built with [Effect](https://effect.website/).
 
-This was originally a pull request that went stale, so it's its own package now. The original package developed by [Dan Zajdband](https://github.com/impronunciable) uses callbacks to handle the asynchronous nature of Node, while this package uses native Promises.
+## Why moviedb-promise?
 
-The main credit goes to the [original `moviedb` package](https://github.com/impronunciable/moviedb) by Dan Zajdband.
+**✨ Built for modern TypeScript applications**
 
-## What is themoviedb.org?
+- 🎯 **Fully type-safe** - End-to-end type safety with Effect Schema
+- 🔄 **Automatic retry** - Resilient API calls with smart retry logic
+- 🚦 **Built-in rate limiting** - Stay within API limits automatically
+- 📊 **Streaming pagination** - Memory-efficient data processing with backpressure
+- 🔍 **Observability** - Built-in logging, tracing, and metrics
+- 🧪 **Easy to test** - Dependency injection makes testing simple
+- 🛡️ **Structured error handling** - Type-safe error channels
+- 🔌 **CamelCase transforms** - Automatic snake_case → camelCase conversion
 
-The Movie Database (TMDB) is a community built project that stores data about movies and television shows. The project started in 2008 and has become one of the largest databases in the world. There are few databases with the vast data TMDB provides. In addition, TMDB gives special attention to international content which is often difficult to find on other databases. TMDB supports 39 different languages and is currently used in 180 countries.
+## Quick Start
 
-In addition to information about actors, directors, production years, movie titles, genres, etc., TMDB also provides high resolution posters and fanart that can easily be incorporated into personal projects. The size of the image database is vast and growing at a rate of 1000 images a day. TMDB processes over 3 billion requests by millions of users daily.
-
-The vast amount of data gathered and stored by TMDB can be accessed via its API. With a key and a URL, making a request is simple. However, managing all the requests needed to create say, a movie rating website, would be quite the task. You'd have to create a function for every type of request needed. That's where moviedb-promise comes in. With it's suite of over 100 functions, moviedb-promise makes interacting with TMDB easy.
-
-## Changelog for v4
-
-- Updated dependencies that may not support lower versions of Node
-- Implemented a throttle for Cloudflare rate limiting ([#72](https://github.com/grantholle/moviedb-promise/pull/74)) (thanks [@alexanderroidl](https://github.com/alexanderroidl))
-
-## Changelog for v3
-
-- Each tmdb function has the correct parameter and response types based on the documentation
-- `append_to_response` should be added to the request parameter of the appropriate functions and not on the options
-- The last parameter to each function can be an axios config object and will overwrite anything on the underlying request.
-- Several functions have been renamed.
-- Search functions accept a string and will be used for the `query` property.
-
-## Changelog for v2
-
-- Source has been ported to TypeScript.
-- [Rate limiting was removed by tmdb](https://github.com/grantholle/moviedb-promise/issues/23). The functionality had remained, but has since been removed in v2. If you wish to add it back, you're welcome to open a PR to discuss its need.
-- The `MovieDb` class has been moved to be a property of the package export. You will need to reference the `MovieDb` property of the export in order to instantiate the class. See usage below for an example.
-- The constructor has been changed to accept only two parameters: an api key and the base url for tmdb.
-- The `session()` function has been renamed to `retrieveSession()`
-- Requests were previously made using [superagent](https://www.npmjs.com/package/superagent) as it was used by the [original `moviedb` package](https://github.com/impronunciable/moviedb). It has been replaced with [axios](https://www.npmjs.com/package/axios) now.
-
-## Integrations
-
-- [Gatsby source](https://github.com/LekoArts/gatsby-source-tmdb)
-
-## Installation
+### Installation
 
 ```bash
-npm install moviedb-promise --save
+npm install moviedb-promise effect @effect/platform @effect/platform-node
 ```
 
-## Usage
+### Basic Usage
 
-Require the module and instantiate the class with your themoviedb.org api key.
+```typescript
+import { NodeHttpClient } from "@effect/platform-node";
+import { Effect, Layer } from "effect";
+import { Movie, MovieDbClient, MovieDbConfig, RateLimiterLive } from "moviedb-promise";
 
-```js
-const { MovieDb } = require('moviedb-promise')
-const moviedb = new MovieDb('your api key')
+// Create config layer
+const ConfigLive = Layer.succeed(MovieDbConfig, {
+  apiKey: "your-api-key",
+  baseUrl: "https://api.themoviedb.org/3",
+});
+
+// Simple movie search
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  const details = yield* movie.getDetails({ id: 550 });
+  console.log(details.title); // "Fight Club"
+  console.log(details.releaseDate); // "1999-10-15" - camelCase!
+});
+
+// Run the program
+const main = program.pipe(
+  Effect.provide(Movie.Default),
+  Effect.provide(MovieDbClient.Default),
+  Effect.provide(RateLimiterLive),
+  Effect.provide(NodeHttpClient.layerUndici),
+  Effect.provide(ConfigLive),
+  Effect.scoped,
+);
+
+await Effect.runPromise(main);
 ```
 
-### `async/await` reminder
+## Core Features
 
-All functions return a Promise, which means that you can also use `async/await`. The caveat of using `await` when making function calls is that the `await` has to be within a function that has been declared `async`. Keep that in mind if you plan to use `await`.
+### 🎬 Movie Service
 
-## Examples
+Get movie details, credits, videos, and images:
 
-```js
-// Using just the Promise
-moviedb
-  .searchMovie({ query: 'Alien' })
-  .then((res) => {
-    console.log(res)
-  })
-  .catch(console.error)
+```typescript
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
 
-// Using await
-// You probably wouldn't ever use it this way...
-;(async function () {
-  try {
-    const res = await moviedb.searchMovie({ query: 'alien' })
-    console.log(res)
-  } catch (e) {
-    console.log(e)
-  }
-})()
+  // Get movie details
+  const details = yield* movie.getDetails({ id: 550 });
 
-// This is a more reasonable example
-const findMovie = async (title) => {
-  // Equivalant to { query: title }
-  const res = await moviedb.searchMovie(title)
+  // Get credits (cast and crew)
+  const credits = yield* movie.getCredits({ id: 550 });
+  console.log(credits.cast[0].name); // "Brad Pitt"
 
-  return res
+  // Get videos (trailers, teasers)
+  const videos = yield* movie.getVideos({ id: 550 });
+
+  // Get images (posters, backdrops)
+  const images = yield* movie.getImages({ id: 550 });
+});
+```
+
+### 📺 TV Service
+
+Access TV show information:
+
+```typescript
+const program = Effect.gen(function* () {
+  const tv = yield* Tv;
+
+  const show = yield* tv.getDetails({ id: 1396 }); // Breaking Bad
+  const credits = yield* tv.getCredits({ id: 1396 });
+  const popular = yield* tv.getPopular({ page: 1 });
+});
+```
+
+### 🔍 Search Service
+
+Search across movies, TV shows, and people:
+
+```typescript
+const program = Effect.gen(function* () {
+  const search = yield* Search;
+
+  // Search movies
+  const movies = yield* search.searchMovie({
+    query: "fight club",
+    year: 1999,
+  });
+
+  // Search TV shows
+  const shows = yield* search.searchTv({ query: "breaking bad" });
+
+  // Search people
+  const people = yield* search.searchPerson({ query: "brad pitt" });
+
+  // Search everything
+  const results = yield* search.searchMulti({ query: "matrix" });
+});
+```
+
+### 👤 Person Service
+
+Get information about actors, directors, and crew:
+
+```typescript
+const program = Effect.gen(function* () {
+  const person = yield* Person;
+
+  const details = yield* person.getDetails({ id: 287 }); // Brad Pitt
+  const movieCredits = yield* person.getMovieCredits({ id: 287 });
+  const tvCredits = yield* person.getTvCredits({ id: 287 });
+  const combined = yield* person.getCombinedCredits({ id: 287 });
+});
+```
+
+## 🚀 Advanced Features
+
+### Streaming Pagination
+
+Efficiently process large datasets with automatic pagination and backpressure:
+
+```typescript
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  // Get first 100 popular movies efficiently
+  const movies = yield* movie.streamPopular({}, { maxResults: 100 }).pipe(
+    Stream.runCollect,
+  );
+
+  // Process with controlled concurrency
+  yield* movie.streamNowPlaying({}, { maxPages: 5 }).pipe(
+    Stream.mapEffect(
+      (movie) => processMovie(movie),
+      { concurrency: 10 } // Max 10 concurrent operations
+    ),
+    Stream.runDrain,
+  );
+
+  // Stop when you find what you need (lazy evaluation)
+  const highlyRated = yield* movie.streamTopRated().pipe(
+    Stream.filter((m) => m.voteAverage > 9.0),
+    Stream.take(1),
+    Stream.runCollect,
+  );
+});
+```
+
+**See examples:**
+- [Basic Streaming Examples](examples/effect/streaming-basic.ts) - Simple pagination patterns
+- [Advanced Streaming Examples](examples/effect/streaming-advanced.ts) - Backpressure, batching, error handling
+
+### Built-in Retry Logic
+
+Automatic retry for transient failures:
+
+```typescript
+// Retries automatically on:
+// - Network errors (connection failures, timeouts)
+// - Rate limit errors (429) with exponential backoff
+// - Server errors (5xx)
+
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  // This will automatically retry up to 3 times if it fails
+  const details = yield* movie.getDetails({ id: 550 });
+});
+```
+
+### Rate Limiting
+
+Stay within TMDb API limits (40 requests/second):
+
+```typescript
+// Rate limiting is automatic - no configuration needed!
+// The library ensures you never exceed API limits
+
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  // Make many requests - they'll be automatically rate limited
+  const movies = yield* Effect.all(
+    Array.from({ length: 100 }, (_, i) =>
+      movie.getDetails({ id: i + 1 })
+    ),
+    { concurrency: 50 } // Library handles rate limiting
+  );
+});
+```
+
+### Observability
+
+Built-in logging, tracing, and metrics:
+
+```typescript
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  // Every request includes:
+  // - Structured logs with request/response details
+  // - Distributed tracing spans
+  // - Metrics (request count, duration, errors)
+
+  const details = yield* movie.getDetails({ id: 550 });
+
+  // Logs include:
+  // - timestamp, path, duration_ms
+  // - error details if request fails
+  // - Request tags for filtering
+});
+```
+
+### Type-Safe Error Handling
+
+Structured errors with full type safety:
+
+```typescript
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  const result = yield* movie.getDetails({ id: 999999 }).pipe(
+    Effect.catchTags({
+      NotFoundError: (error) =>
+        Console.log("Movie not found"),
+
+      AuthenticationError: (error) =>
+        Console.log("Invalid API key"),
+
+      RateLimitError: (error) =>
+        Console.log("Rate limited - will retry"),
+
+      NetworkError: (error) =>
+        Console.log("Network issue - will retry"),
+    })
+  );
+});
+```
+
+**Error Types:**
+- `NotFoundError` - Resource not found (404)
+- `AuthenticationError` - Invalid API key (401)
+- `RateLimitError` - Rate limit exceeded (429)
+- `ValidationError` - Invalid request (400, 422)
+- `ServerError` - TMDb server error (5xx)
+- `NetworkError` - Network/connection issues
+
+### CamelCase Transformation
+
+All API responses automatically converted from snake_case to camelCase:
+
+```typescript
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+
+  const details = yield* movie.getDetails({ id: 550 });
+
+  // TMDb API returns: release_date, original_title, vote_average
+  // You get: releaseDate, originalTitle, voteAverage
+
+  console.log(details.releaseDate);      // ✅ camelCase
+  console.log(details.originalTitle);    // ✅ camelCase
+  console.log(details.voteAverage);      // ✅ camelCase
+});
+```
+
+## 📚 API Reference
+
+### Services
+
+All services follow the same pattern with Effect dependency injection:
+
+```typescript
+import { Movie, Tv, Search, Person } from "moviedb-promise";
+
+// Use in Effect.gen
+const program = Effect.gen(function* () {
+  const movie = yield* Movie;
+  const tv = yield* Tv;
+  const search = yield* Search;
+  const person = yield* Person;
+});
+```
+
+### Movie Service Methods
+
+**Details & Metadata:**
+- `getDetails({ id, language? })` - Get movie details
+- `getCredits({ id, language? })` - Get cast and crew
+- `getVideos({ id, language? })` - Get trailers and clips
+- `getImages({ id, language?, include_image_language? })` - Get posters and backdrops
+
+**Lists:**
+- `getNowPlaying({ language?, page?, region? })` - Movies in theaters
+- `getPopular({ language?, page?, region? })` - Popular movies
+- `getTopRated({ language?, page?, region? })` - Top rated movies
+
+**Streaming:**
+- `streamNowPlaying(request?, options?)` - Stream now playing movies
+- `streamPopular(request?, options?)` - Stream popular movies
+- `streamTopRated(request?, options?)` - Stream top rated movies
+
+### TV Service Methods
+
+**Details & Metadata:**
+- `getDetails({ id, language? })` - Get TV show details
+- `getCredits({ id, language? })` - Get cast and crew
+- `getVideos({ id, language? })` - Get trailers and clips
+- `getImages({ id, language?, include_image_language? })` - Get images
+
+**Lists:**
+- `getAiringToday({ language?, page?, timezone? })` - Shows airing today
+- `getOnTheAir({ language?, page?, timezone? })` - Shows currently on air
+- `getPopular({ language?, page? })` - Popular shows
+- `getTopRated({ language?, page? })` - Top rated shows
+
+**Streaming:**
+- `streamAiringToday(request?, options?)` - Stream airing today
+- `streamOnTheAir(request?, options?)` - Stream on the air
+- `streamPopular(request?, options?)` - Stream popular shows
+- `streamTopRated(request?, options?)` - Stream top rated shows
+
+### Search Service Methods
+
+**Search:**
+- `searchMovie({ query, language?, page?, year?, ... })` - Search movies
+- `searchTv({ query, language?, page?, ... })` - Search TV shows
+- `searchPerson({ query, language?, page?, ... })` - Search people
+- `searchMulti({ query, language?, page?, ... })` - Search everything
+
+**Streaming:**
+- `streamSearchMovie(request, options?)` - Stream movie search results
+- `streamSearchTv(request, options?)` - Stream TV search results
+- `streamSearchPerson(request, options?)` - Stream person search results
+- `streamSearchMulti(request, options?)` - Stream multi-search results
+
+### Person Service Methods
+
+**Details:**
+- `getDetails({ id, language? })` - Get person details
+- `getMovieCredits({ id, language? })` - Get movie credits
+- `getTvCredits({ id, language? })` - Get TV credits
+- `getCombinedCredits({ id, language? })` - Get all credits
+- `getImages({ id })` - Get profile images
+
+**Lists:**
+- `getPopular({ language?, page? })` - Popular people
+
+**Streaming:**
+- `streamPopular(request?, options?)` - Stream popular people
+
+### Pagination Options
+
+All streaming methods accept `PaginationOptions`:
+
+```typescript
+interface PaginationOptions {
+  startPage?: number;    // Start from specific page (default: 1)
+  maxPages?: number;     // Limit number of pages to fetch
+  maxResults?: number;   // Limit total results to return
 }
 
-try {
-  const results = findMovie('alien')
-} catch (e) {
-  // Do something
-}
+// Examples:
+movie.streamPopular({}, { maxPages: 5 })      // First 5 pages
+movie.streamPopular({}, { maxResults: 100 })  // First 100 results
+movie.streamPopular({}, { startPage: 3 })     // Start from page 3
 ```
 
-or
+## 🧪 Testing
 
-```js
-moviedb
-  .movieInfo({ id: 666 })
-  .then((res) => {
-    console.log(res)
-  })
-  .catch(console.error)
+The library is designed for easy testing with dependency injection:
+
+```typescript
+import { makeTestConfig, MockRateLimiter } from "moviedb-promise/test-layers";
+
+const testProgram = Effect.gen(function* () {
+  const movie = yield* Movie;
+  const details = yield* movie.getDetails({ id: 550 });
+  // Your test assertions
+}).pipe(
+  Effect.provide(Movie.Default),
+  Effect.provide(MovieDbClient.Default),
+  Effect.provide(MockRateLimiter),           // No rate limiting in tests
+  Effect.provide(NodeHttpClient.layerUndici),
+  Effect.provide(makeTestConfig({ apiKey: "test-key" })),
+  Effect.scoped,
+);
 ```
 
-or
+## 🔧 Configuration
 
-controller file example that
+### Basic Configuration
 
-- uses async await
-- reads from a .env file
-- includes parameters
-- handles errors
+```typescript
+import { Layer } from "effect";
+import { MovieDbConfig } from "moviedb-promise";
 
-```js
-import { MovieDb } from 'moviedb-promise'
-import dotenv from 'dotenv'
+const ConfigLive = Layer.succeed(MovieDbConfig, {
+  apiKey: process.env.TMDB_API_KEY!,
+  baseUrl: "https://api.themoviedb.org/3",
 
-dotenv.config()
-
-const moviedb = new MovieDb(process.env.KEY)
-
-const newError = (name) => {
-  const e = new Error(name)
-  e.name = name
-  return Promise.reject(e)
-}
-
-export const searchMovie = async (req) => {
-  const parameters = {
-    query: req.query.name,
-    page: req.query.page,
-  }
-  try {
-    const res = await moviedb.searchMovie(parameters)
-    return res.results
-  } catch (error) {
-    return newError(error)
-  }
-}
-
-export const searchPerson = async (req) => {
-  const parameters = {
-    query: req.query.name,
-    page: 1,
-  }
-  try {
-    const res = await moviedb.searchPerson(parameters)
-    return res.results
-  } catch (error) {
-    return newError(error)
-  }
-}
-
-export const movieKeywords = async (req) => {
-  try {
-    const res = await moviedb.movieKeywords({ query: req.query.name })
-    return res.results
-  } catch (error) {
-    return newError(error)
-  }
-}
+  // Optional: Rate limiting (defaults shown)
+  requestsPerSecond: 40,    // TMDb limit
+  burstCapacity: 10,
+  bufferCapacity: 100,
+  bufferStrategy: "dropping",
+  maxConcurrent: 10,
+});
 ```
 
-Some endpoints, such as watchlist endpoints, have an optional account id parameter. If you have a [session id](https://developers.themoviedb.org/3/authentication/how-do-i-generate-a-session-id), you don't need to provide that parameter.
+### Environment Variables
 
-```js
-// This is the same as calling it as
-// moviedb.accountMovieWatchlist({ id: '{account_id}' })
-moviedb.sessionId = 'my-cached-session-id'
-moviedb
-  .accountMovieWatchlist()
-  .then((res) => {
-    // Your watchlist items
-    console.log(res)
-  })
-  .catch(console.error)
-
-// Creating a session id would look something like this
-moviedb
-  .requestToken()
-  .then((token) => {
-    // Now you need to visit this url to authorize
-    const tokenUrl = `https://www.themoviedb.org/authenticate/${token}`
-  })
-  .catch(console.error)
-
-// After that has been authorized, you can get the session id
-moviedb
-  .retrieveSession()
-  .then((sessionId) => {
-    // Probably cache this id somewhere to avoid this workflow
-    console.log(sessionId)
-
-    // After the sessionId is cached, the next time use instantiate the class,
-    // set the sessionId by moviedb.sessionId = 'my-session-id'
-
-    // This can be called now because sessionId is set
-    moviedb
-      .accountMovieWatchlist()
-      .then((res) => {
-        // Your watchlist items
-        console.log(res)
-      })
-      .catch(console.error)
-  })
-  .catch(console.error)
+```bash
+# .env
+TMDB_API_KEY=your_api_key_here
 ```
 
-## Available methods
+```typescript
+import dotenv from "dotenv";
+dotenv.config();
 
-The Function column lists all the available functions in the class. The Endpoint column lists possible request parameters (placeholders prefixed with `:`) needed for the call. If the endpoint doesn't have any placeholders, check out the [documentation](https://developers.themoviedb.org/3/) for the query parameters you can use.
-
-### Examples
-
-| Function | Endpoint |
-| -------- | -------- |
-| tvInfo   | tv/:id   |
-
-```js
-// Two ways:
-// The object key matches the placeholder name
-moviedb.tvInfo({ id: 61888 }).then(...)
-
-// Or for simplicity, if it only has one placeholder
-moviedb.tvInfo(61888).then(...)
+const ConfigLive = Layer.succeed(MovieDbConfig, {
+  apiKey: process.env.TMDB_API_KEY!,
+  baseUrl: "https://api.themoviedb.org/3",
+});
 ```
 
-| Function    | Endpoint     |
-| ----------- | ------------ |
-| searchMovie | search/movie |
+## 📖 Examples
 
-There aren't any placeholders, but the [documentation](https://developers.themoviedb.org/3/search/search-movies) shows there are `language`, `query`, `page`, `include_adult`, `region`, `year`, and `primary_release_year` available to use. Each expects a certain data type or format, so check out the docs for the details.
+Check out complete examples in the `examples/effect/` directory:
 
-```js
-const parameters = {
-  query: 'Kindergarten Cop',
-  language: 'fr' // ISO 639-1 code
-}
+- **[streaming-basic.ts](examples/effect/streaming-basic.ts)** - Basic streaming patterns
+  - Get first N results
+  - Limit by pages
+  - Stop when condition is met
+  - Transform while streaming
 
-moviedb.searchMovie(parameters).then(...)
+- **[streaming-advanced.ts](examples/effect/streaming-advanced.ts)** - Advanced patterns
+  - Backpressure with concurrent processing
+  - Batch processing
+  - Complex pipelines
+  - Error handling
+  - Side effects during streaming
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+### Testing
+
+```bash
+# Run all tests
+deno test --allow-net --allow-env
+
+# Run specific test file
+deno test --allow-net --allow-env tests/effect/movie.test.ts
+
+# Format code
+deno fmt
 ```
 
-### Complete function list
-
-| Function                 |
-| ------------------------ |
-| configuration            |
-| countries                |
-| jobs                     |
-| languages                |
-| primaryTranslations      |
-| timezones                |
-| find                     |
-| searchCompany            |
-| searchCollection         |
-| searchKeyword            |
-| searchMovie              |
-| searchMulti              |
-| searchPerson             |
-| searchTv                 |
-| searchList               |
-| collectionInfo           |
-| collectionImages         |
-| collectionTranslations   |
-| discoverMovie            |
-| discoverTv               |
-| trending                 |
-| movieInfo                |
-| movieAccountStates       |
-| movieAlternativeTitles   |
-| movieChanges             |
-| movieCredits             |
-| movieExternalIds         |
-| movieImages              |
-| movieKeywords            |
-| movieReleaseDates        |
-| movieVideos              |
-| movieWatchProvidersForId |
-| movieWatchProviders      |
-| movieTranslations        |
-| movieRecommendations     |
-| movieSimilar             |
-| movieReviews             |
-| movieLists               |
-| movieRatingUpdate        |
-| movieRatingDelete        |
-| movieLatest              |
-| movieNowPlaying          |
-| moviePopular             |
-| movieTopRated            |
-| upcomingMovies           |
-| tvInfo                   |
-| tvAccountStates          |
-| tvAlternativeTitles      |
-| tvChanges                |
-| tvContentRatings         |
-| tvCredits                |
-| episodeGroups            |
-| tvExternalIds            |
-| tvImages                 |
-| tvKeywords               |
-| tvRecommendations        |
-| tvReviews                |
-| tvScreenedTheatrically   |
-| tvSimilar                |
-| tvTranslations           |
-| tvVideos                 |
-| tvWatchProvidersForId    |
-| tvWatchProviders         |
-| tvRatingUpdate           |
-| tvRatingDelete           |
-| tvLatest                 |
-| tvAiringToday            |
-| tvOnTheAir               |
-| tvPopular                |
-| tvTopRated               |
-| seasonInfo               |
-| seasonChanges            |
-| seasonAccountStates      |
-| seasonCredits            |
-| seasonExternalIds        |
-| seasonImages             |
-| seasonVideos             |
-| episodeInfo              |
-| episodeChanges           |
-| episodeAccountStates     |
-| episodeCredits           |
-| episodeExternalIds       |
-| episodeImages            |
-| episodeTranslations      |
-| episodeRatingUpdate      |
-| episodeRatingDelete      |
-| episodeVideos            |
-| personInfo               |
-| personChanges            |
-| personMovieCredits       |
-| personTvCredits          |
-| personCombinedCredits    |
-| personExternalIds        |
-| personImages             |
-| personTaggedImages       |
-| personTranslations       |
-| personLatest             |
-| personPopular            |
-| creditInfo               |
-| listInfo                 |
-| listStatus               |
-| createList               |
-| createListItem           |
-| removeListItem           |
-| clearList                |
-| deleteList               |
-| genreMovieList           |
-| genreTvList              |
-| keywordInfo              |
-| keywordMovies            |
-| companyInfo              |
-| companyAlternativeNames  |
-| companyImages            |
-| accountInfo              |
-| accountLists             |
-| accountFavoriteMovies    |
-| accountFavoriteTv        |
-| accountFavoriteUpdate    |
-| accountRatedMovies       |
-| accountRatedTv           |
-| accountRatedTvEpisodes   |
-| accountMovieWatchlist    |
-| accountTvWatchlist       |
-| accountWatchlistUpdate   |
-| changedMovies            |
-| changedTvs               |
-| changedPeople            |
-| movieCertifications      |
-| tvCertifications         |
-| networkInfo              |
-| networkAlternativeNames  |
-| networkImages            |
-| review                   |
-| episodeGroup             |
-
-## Support for append_to_response
-
-The movieInfo, tvInfo, seasonInfo, episodeInfo and personInfo methods support an option to specify the [TMDB API's append_to_response query parameter](https://developers.themoviedb.org/3/getting-started/append-to-response). This makes it possible to make sub requests within the same namespace in a single HTTP request. Each request will get appended to the response as a new JSON object.
-
-In order to receive type support for the items returned with an `append_to_response` request, you'll need to cast the attributes as their appropriate type. **Note** this requires you to be using TypeScript.
-
-```ts
-const response = await moviedb.movieInfo({ id: tmdbId, append_to_response: "release_dates" })
-  as MovieResponse & { release_dates: MovieReleaseDatesResponse }
-```
-
-In this case, `response.release_dates` will be cast as `MovieReleaseDatesResponse` since it's not in the default `MovieResponse` that gets returned with `movieInfo()`.
-
-```js
-const res = await api.tvInfo({
-  id: 4629,
-  append_to_response: 'season/1,season/1/credits',
-})
-```
-
-### Request Options
-
-The last parameter of the endpoint function calls is an [axios request config object](https://github.com/axios/axios#request-config). Those settings will overwrite anything on the underlying request.
-
-```js
-// Add a timeout restriction to the request
-const res = await api.tvInfo(4629, { timeout: 10000 })
-```
-
-or when combining multiple options append_to_response is desired:
-
-```js
-const res = await api.tvInfo(
-  {
-    id: 4629,
-    append_to_response: 'season/1,season/1/credits',
-  },
-  {
-    timeout: 10000,
-  },
-)
-```
-
-## Contributing
-
-First, thanks for taking the time!
-
-#### Testing
-
-- Before submitting a pull request, please run `npm run test`
-- Make sure all tests pass before submitting a pull request
-- Add tests from any features you add
-
-#### Submitting changes
-
-Please submit a pull request with an outline of what you've added/changed/removed. When you submit your code, please include examples and make sure that you submit one feature per commit.
-
-#### Syntax guidelines
+### Requirements
 
 - Use TypeScript
-- Run `npm run format` before submitting to let Prettier handle the formatting
-- Avoid code that is platform dependent
+- Follow Effect patterns
+- Add tests for new features
+- Run `deno fmt` before committing
+- Keep documentation up to date
 
-#### Documentation guidelines
-
-- Use Markdown
-- Reference a class with [ClassName]
-- Reference an instance of a class with [Classname::methodName]
-- Reference a method in class with [Classname.methodName]
-
-## License
+## 📝 License
 
 [MIT](LICENSE.md)
+
+## 🙏 Credits
+
+Built with [Effect](https://effect.website/) - A powerful TypeScript framework for building robust applications.
+
+API data provided by [The Movie Database (TMDb)](https://www.themoviedb.org/).
+
+---
+
+**Note:** This library requires an API key from TMDb. Get your free API key at https://www.themoviedb.org/settings/api
